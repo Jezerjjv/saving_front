@@ -23,8 +23,9 @@ export default function Settings() {
 
   const load = () => {
     setLoading(true);
-    api.categories.list()
-      .then(setCategories)
+    api.categories
+      .list()
+      .then((data) => setCategories(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setLoading(false));
   };
@@ -140,7 +141,7 @@ export default function Settings() {
             )}
           </form>
           <ul style={styles.list}>
-            {categories.map((c) => (
+            {(Array.isArray(categories) ? categories : []).map((c) => (
               <li key={c.id} style={styles.card}>
                 <span style={styles.catIcon}>{c.icon}</span>
                 <span>{c.name}</span>

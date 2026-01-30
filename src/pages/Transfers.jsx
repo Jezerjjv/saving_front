@@ -15,9 +15,11 @@ export default function Transfers() {
     setLoading(true);
     Promise.all([api.accounts.list(), api.transfers.list()])
       .then(([a, t]) => {
-        setAccounts(a);
-        setTransfers(t);
-        if (a.length && !form.fromAccountId) setForm((f) => ({ ...f, fromAccountId: a[0].id, toAccountId: a[1]?.id ?? a[0].id }));
+        const accountsList = Array.isArray(a) ? a : [];
+        const transfersList = Array.isArray(t) ? t : [];
+        setAccounts(accountsList);
+        setTransfers(transfersList);
+        if (accountsList.length && !form.fromAccountId) setForm((f) => ({ ...f, fromAccountId: accountsList[0].id, toAccountId: accountsList[1]?.id ?? accountsList[0].id }));
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -71,7 +73,7 @@ export default function Transfers() {
     });
   };
 
-  const getAccountName = (id) => accounts.find((a) => a.id === id)?.name ?? id;
+  const getAccountName = (id) => (Array.isArray(accounts) ? accounts : []).find((a) => a.id === id)?.name ?? id;
 
   if (loading) return <Loader />;
 
@@ -87,7 +89,7 @@ export default function Transfers() {
           style={styles.input}
           required
         >
-          {accounts.map((a) => (
+          {(Array.isArray(accounts) ? accounts : []).map((a) => (
             <option key={a.id} value={a.id}>{a.name}</option>
           ))}
         </select>
@@ -98,7 +100,7 @@ export default function Transfers() {
           style={styles.input}
           required
         >
-          {accounts.map((a) => (
+          {(Array.isArray(accounts) ? accounts : []).map((a) => (
             <option key={a.id} value={a.id}>{a.name}</option>
           ))}
         </select>
@@ -124,7 +126,7 @@ export default function Transfers() {
 
       <h2 style={styles.subtitle}>Historial</h2>
       <ul style={styles.list}>
-        {transfers.slice(0, 50).map((t) => (
+        {(Array.isArray(transfers) ? transfers : []).slice(0, 50).map((t) => (
           <li key={t.id} style={styles.card}>
             <div>
               <strong>{getAccountName(t.fromAccountId)}</strong> → <strong>{getAccountName(t.toAccountId)}</strong>

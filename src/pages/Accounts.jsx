@@ -14,7 +14,12 @@ export default function Accounts() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', balance: '0' });
 
-  const load = () => api.accounts.list().then(setAccounts).catch(console.error).finally(() => setLoading(false));
+  const load = () =>
+    api.accounts
+      .list()
+      .then((data) => setAccounts(Array.isArray(data) ? data : []))
+      .catch(console.error)
+      .finally(() => setLoading(false));
 
   useEffect(() => {
     load();
@@ -107,7 +112,7 @@ export default function Accounts() {
       )}
 
       <div className="accounts-grid" style={styles.grid}>
-        {accounts.map((a) => (
+        {(Array.isArray(accounts) ? accounts : []).map((a) => (
           <article key={a.id} className="card-account" style={styles.card}>
             <button
               type="button"
@@ -130,7 +135,7 @@ export default function Accounts() {
           </article>
         ))}
       </div>
-      {accounts.length === 0 && !showForm && (
+      {(Array.isArray(accounts) ? accounts : []).length === 0 && !showForm && (
         <p style={styles.empty}>No hay cuentas. Haz clic en "Nueva cuenta" para agregar una.</p>
       )}
     </div>

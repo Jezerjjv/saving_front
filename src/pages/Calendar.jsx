@@ -23,8 +23,9 @@ export default function Calendar() {
 
   useEffect(() => {
     setLoading(true);
-    api.transactions.monthlySummary(year)
-      .then(setSummary)
+    api.transactions
+      .monthlySummary(year)
+      .then((data) => setSummary(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [year]);
