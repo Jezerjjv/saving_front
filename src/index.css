@@ -1,0 +1,447 @@
+:root {
+  --bg: #0f0f12;
+  --surface: #18181d;
+  --surface-hover: #222228;
+  --border: #2a2a32;
+  --text: #e8e8ed;
+  --text-muted: #8b8b96;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --income: #22c55e;
+  --expense: #ef4444;
+  --radius: 10px;
+  --radius-card: 14px;
+  --font: 'DM Sans', system-ui, sans-serif;
+  --touch-min: 44px;
+  /* Botones: editar (amarillo), eliminar (rojo), aplicar (verde), iconos blancos, sin borde */
+  --btn-edit-bg: #eab308;
+  --btn-edit-color: #fff;
+  --btn-delete-bg: var(--expense);
+  --btn-delete-color: #fff;
+  --btn-apply-bg: var(--income);
+  --btn-apply-color: #fff;
+}
+
+/* Botones de acción (editar/eliminar/aplicar): sin borde ni outline, icono blanco */
+.btn-icon-action {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.btn-icon-action svg {
+  color: inherit;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a42 #18181d;
+}
+html::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+html::-webkit-scrollbar-track {
+  background: #18181d;
+}
+html::-webkit-scrollbar-thumb {
+  background: #3a3a42;
+  border-radius: 5px;
+}
+html::-webkit-scrollbar-thumb:hover {
+  background: #4a4a52;
+}
+
+/* Scrollbar oscuro en todos los elementos con scroll */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a42 #18181d;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: #18181d;
+}
+*::-webkit-scrollbar-thumb {
+  background: #3a3a42;
+  border-radius: 5px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #4a4a52;
+}
+
+/* Spinner de carga */
+@keyframes loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.loader-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: var(--text-muted);
+}
+.loader-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: loader-spin 0.8s linear infinite;
+}
+.loader-text {
+  font-size: 0.9rem;
+}
+
+/* Saldo difuminado (configuración) */
+.balance-blur {
+  filter: blur(6px);
+  user-select: none;
+  pointer-events: none;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  min-height: var(--touch-min);
+  min-width: var(--touch-min);
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+.income { color: var(--income); }
+.expense { color: var(--expense); }
+
+/* Cards */
+.card-account {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 1.25rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.card-account:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.12);
+}
+
+/* Grid responsive */
+.accounts-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+/* Calendario meses */
+.calendar-year {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+@media (min-width: 480px) {
+  .calendar-year {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+@media (min-width: 640px) {
+  .calendar-year {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.calendar-month-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-min);
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s;
+}
+.calendar-month-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Navegación mes/año: mismo aspecto que las pestañas (Todo, Gastos, etc.) */
+.nav-month {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.nav-month-btn {
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  padding: 0.5rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 1.1rem;
+  font-family: inherit;
+}
+.nav-month-btn:hover {
+  background: var(--surface-hover);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.nav-month select {
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.9rem;
+  min-height: var(--touch-min);
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b8b96' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2rem;
+}
+.nav-month select:hover {
+  border-color: var(--accent);
+}
+.nav-month select:focus {
+  outline: none;
+  border: 1px solid var(--accent);
+}
+
+/* Movimientos: fila de botones + pestañas (Todo, Gastos, Ingresos, Rápidos y Fijos) */
+.tabs-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.tabs-add-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+.tabs-filters {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+.tabs-filters button {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.tabs-filters .tabs-filter-icon {
+  flex-shrink: 0;
+}
+.tabs-filter-label-short {
+  display: none;
+}
+
+/* Móvil: "+" rojo y verde junto con las pestañas, todo en una fila que hace wrap */
+@media (max-width: 640px) {
+  .tabs-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .tabs-add-buttons {
+    display: flex;
+    gap: 0.35rem;
+  }
+  .tabs-add-buttons .btn-add-label {
+    display: none;
+  }
+  .tabs-add-buttons button {
+    width: var(--touch-min);
+    min-width: var(--touch-min);
+    padding: 0.5rem !important;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+  .tabs-filters {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .tabs-filters button {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 0.4rem 0.55rem !important;
+    font-size: 0.8rem;
+  }
+  /* Móvil: solo iconos en las pestañas */
+  .tabs-filters .tabs-filter-label {
+    display: none !important;
+  }
+  .tabs-filters button {
+    padding: 0.5rem !important;
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
+    justify-content: center;
+  }
+  .tabs-filter-label-full {
+    display: none !important;
+  }
+  .tabs-filter-label-short {
+    display: none !important;
+  }
+
+  /* Accesos rápidos: solo icono en móvil */
+  .quick-bar .quick-chip-label {
+    display: none;
+  }
+  .quick-bar button {
+    padding: 0.5rem !important;
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
+    justify-content: center;
+  }
+}
+
+/* Móvil: cadena de altura fija para que solo .layout-main haga scroll y el contenido no se corte */
+@media (max-width: 768px) {
+  html,
+  body,
+  #root {
+    height: 100% !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+  }
+  .layout-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .layout-header {
+    padding: 0.5rem 1rem;
+    min-height: 48px;
+    flex-shrink: 0;
+  }
+  .layout-header .logo {
+    font-size: 1rem;
+  }
+  /* Main es el único scroll: flex 1 + min-height 0 + overflow auto + padding bajo para el footer */
+  .layout-main {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .nav-top {
+    display: none !important;
+  }
+  .movimientos-hint {
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+  }
+}
+
+/* Footer móvil: solo iconos, sin texto */
+@media (max-width: 768px) {
+  .nav-bottom {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    align-items: stretch;
+    padding: 0.35rem 0.2rem;
+    padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+    z-index: 100;
+  }
+  .nav-bottom-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 0.35rem 0.4rem;
+    min-height: 52px;
+    flex: 1;
+    max-width: 72px;
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.15s, background 0.15s;
+  }
+  .nav-bottom-link .nav-bottom-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav-bottom-link .nav-bottom-icon svg {
+    display: block;
+  }
+  /* Ocultar nombres en el footer: solo iconos */
+  .nav-bottom-link .nav-bottom-label {
+    display: none;
+  }
+  .nav-bottom-link.active {
+    color: var(--accent);
+    background: var(--surface-hover);
+  }
+}
+@media (min-width: 769px) {
+  .nav-bottom {
+    display: none;
+  }
+}
