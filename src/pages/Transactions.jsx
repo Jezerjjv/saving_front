@@ -88,14 +88,14 @@ export default function Transactions() {
       api.quickTemplates.list({ type: 'income' }),
     ])
       .then(([g, byCat, a, c, fe, fi, qe, qi]) => {
-        setGrouped(g);
-        setExpensesByCategory(byCat || []);
-        setAccounts(a);
-        setCategories(c);
-        setFixedExpenses(fe);
-        setFixedIncomes(fi);
-        setQuickTemplatesExpense(qe);
-        setQuickTemplatesIncome(qi);
+        setGrouped(Array.isArray(g) ? g : []);
+        setExpensesByCategory(Array.isArray(byCat) ? byCat : []);
+        setAccounts(Array.isArray(a) ? a : []);
+        setCategories(Array.isArray(c) ? c : []);
+        setFixedExpenses(Array.isArray(fe) ? fe : []);
+        setFixedIncomes(Array.isArray(fi) ? fi : []);
+        setQuickTemplatesExpense(Array.isArray(qe) ? qe : []);
+        setQuickTemplatesIncome(Array.isArray(qi) ? qi : []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -305,8 +305,15 @@ export default function Transactions() {
   };
 
   const filteredGrouped = () => {
-    if (grouped.length === 0) return [];
-    let result = activeTab === 'all' ? grouped : grouped
+    if (!Array.isArray(grouped) || grouped.length === 0) return [];
+    const safeGrouped = grouped.map((dayGroup) => ({
+      ...dayGroup,
+      categories: Array.isArray(dayGroup.categories) ? dayGroup.categories.map((cat) => ({
+        ...cat,
+        items: Array.isArray(cat.items) ? cat.items : [],
+      })) : [],
+    }));
+    let result = activeTab === 'all' ? safeGrouped : safeGrouped
       .map((dayGroup) => {
         const filtered = dayGroup.categories
           .map((cat) => ({
@@ -337,10 +344,11 @@ export default function Transactions() {
             return cat.categoryId === catId;
           })
           .map((cat) => {
-            const matchesText = text === '' || cat.categoryName?.toLowerCase().includes(text) || cat.items.some((t) => t.name?.toLowerCase().includes(text));
+            const items = Array.isArray(cat.items) ? cat.items : [];
+            const matchesText = text === '' || cat.categoryName?.toLowerCase().includes(text) || items.some((t) => t.name?.toLowerCase().includes(text));
             if (!matchesText) return { ...cat, items: [] };
-            const items = text === '' ? cat.items : cat.items.filter((t) => t.name?.toLowerCase().includes(text));
-            return { ...cat, items };
+            const filteredItems = text === '' ? items : items.filter((t) => t.name?.toLowerCase().includes(text));
+            return { ...cat, items: filteredItems };
           })
           .filter((cat) => cat.items.length > 0);
         return filteredCats.length ? { ...dayGroup, categories: filteredCats } : null;
@@ -350,12 +358,12 @@ export default function Transactions() {
     return result;
   };
 
-  const primaryAccount = primaryAccountId != null ? accounts.find((a) => a.id === primaryAccountId) : null;
-  const primaryTotals = primaryAccountId != null && grouped.length > 0
+  const primaryAccount = primaryAccountId != null && Array.isArray(accounts) ? accounts.find((a) => a.id === primaryAccountId) : null;
+  const primaryTotals = primaryAccountId != null && Array.isArray(grouped) && grouped.length > 0
     ? grouped.reduce(
         (acc, dayGroup) => {
-          dayGroup.categories?.forEach((cat) => {
-            cat.items?.forEach((t) => {
+          (Array.isArray(dayGroup.categories) ? dayGroup.categories : []).forEach((cat) => {
+            (Array.isArray(cat.items) ? cat.items : []).forEach((t) => {
               if (t.accountId !== primaryAccountId) return;
               if (t.type === 'income') acc.income += t.amount ?? 0;
               else acc.expense += t.amount ?? 0;
@@ -400,9 +408,9 @@ export default function Transactions() {
         </div>
       )}
 
-      {(quickTemplatesExpense.some((t) => t.showInQuick !== false) || quickTemplatesIncome.some((t) => t.showInQuick !== false)) && (
+      {(Array.isArray(quickTemplatesExpense) && quickTemplatesExpense.some((t) => t.showInQuick !== false)) || (Array.isArray(quickTemplatesIncome) && quickTemplatesIncome.some((t) => t.showInQuick !== false)) ? (
         <div className="quick-bar" style={styles.quickBar}>
-          {quickTemplatesExpense.filter((t) => t.showInQuick !== false).map((t) => {
+          {(Array.isArray(quickTemplatesExpense) ? quickTemplatesExpense : []).filter((t) => t.showInQuick !== false).map((t) => {
             const icon = t.icon || categories.find((c) => c.id === t.categoryId)?.icon || '💸';
             return (
               <button
@@ -419,7 +427,7 @@ export default function Transactions() {
               </button>
             );
           })}
-          {quickTemplatesIncome.filter((t) => t.showInQuick !== false).map((t) => {
+          {(Array.isArray(quickTemplatesIncome) ? quickTemplatesIncome : []).filter((t) => t.showInQuick !== false).map((t) => {
             const icon = t.icon || categories.find((c) => c.id === t.categoryId)?.icon || '💰';
             return (
               <button
@@ -437,7 +445,7 @@ export default function Transactions() {
             );
           })}
         </div>
-      )}
+      ) : null}
 
       <div className="tabs-row">
         <div className="tabs-add-buttons">
