@@ -3,7 +3,7 @@ import { IconEdit, IconTrash, IconChevronDown, IconChevronRight } from './Icons.
 
 function formatDate(dateStr) {
   const d = new Date(dateStr);
-  return d.toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' });
+  return d.toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function dayTotal(dayGroup) {
@@ -65,7 +65,7 @@ export default function TransactionAccordion({ dayGroup, filterType, onEdit, onD
         onClick={() => setOpenDay(!openDay)}
         style={styles.dayHeader}
       >
-        <span>{formatDate(dayGroup.date)}</span>
+        <span style={styles.dayDate}>{formatDate(dayGroup.date)}</span>
         <span style={{ ...styles.dayTotal, color: daySum.balance >= 0 ? 'var(--income)' : 'var(--expense)' }}>
           {daySum.balance >= 0 ? '+' : ''}{formatEur(daySum.balance)}
         </span>
@@ -103,10 +103,10 @@ export default function TransactionAccordion({ dayGroup, filterType, onEdit, onD
                         </div>
                         <div style={styles.itemActions}>
                           <button type="button" className="btn-icon-action" onClick={() => onEdit(tx)} style={styles.btnIcon} title="Editar" aria-label="Editar">
-                            <IconEdit size={18} />
+                            <IconEdit size={16} />
                           </button>
                           <button type="button" className="btn-icon-action" onClick={() => onDelete(tx.id)} style={styles.btnIconDanger} title="Eliminar" aria-label="Eliminar">
-                            <IconTrash size={18} />
+                            <IconTrash size={16} />
                           </button>
                         </div>
                       </li>
@@ -139,6 +139,7 @@ const styles = {
     textAlign: 'left',
     cursor: 'pointer',
   },
+  dayDate: { minWidth: '8rem', textAlign: 'center' },
   dayTotal: { fontWeight: 700, fontSize: '0.95rem' },
   chevron: { color: 'var(--text-muted)', fontSize: '0.75rem' },
   dayContent: { marginTop: '0.25rem', marginLeft: '0.5rem', borderLeft: '2px solid var(--border)', paddingLeft: '0.75rem' },
@@ -173,6 +174,6 @@ const styles = {
   itemMain: { display: 'flex', flexDirection: 'column', gap: '0.15rem' },
   amount: { fontWeight: 600 },
   itemActions: { display: 'flex', gap: '0.25rem' },
-  btnIcon: { padding: 0, fontSize: '1rem', background: 'var(--btn-edit-bg)', color: 'var(--btn-edit-color)', border: 'none', borderRadius: 'var(--radius)', minWidth: 40, minHeight: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
-  btnIconDanger: { padding: 0, fontSize: '1rem', background: 'var(--btn-delete-bg)', color: 'var(--btn-delete-color)', border: 'none', borderRadius: 'var(--radius)', minWidth: 40, minHeight: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  btnIcon: { padding: 0, fontSize: '0.9rem', background: 'var(--btn-edit-bg)', color: 'var(--btn-edit-color)', border: 'none', borderRadius: 'var(--radius)', width: 32, height: 32, minWidth: 32, minHeight: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  btnIconDanger: { padding: 0, fontSize: '0.9rem', background: 'var(--btn-delete-bg)', color: 'var(--btn-delete-color)', border: 'none', borderRadius: 'var(--radius)', width: 32, height: 32, minWidth: 32, minHeight: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
 };

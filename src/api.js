@@ -29,6 +29,13 @@ export const api = {
       delete: (accountId, productId) => request(`/accounts/${accountId}/products/${productId}`, { method: 'DELETE' }),
     },
   },
+  icons: {
+    list: () => request('/icons'),
+    get: (id) => request(`/icons/${id}`),
+    create: (body) => request('/icons', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id, body) => request(`/icons/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: (id) => request(`/icons/${id}`, { method: 'DELETE' }),
+  },
   categories: {
     list: () => request('/categories'),
     get: (id) => request(`/categories/${id}`),
@@ -40,6 +47,7 @@ export const api = {
     list: () => request('/transactions'),
     grouped: (month, year) => request(`/transactions/grouped?month=${month}&year=${year}`),
     monthlySummary: (year) => request(`/transactions/monthly-summary?year=${year}`),
+    dailyIndicators: (year) => request(`/transactions/daily-indicators?year=${year}`),
     expensesByCategory: (month, year) => request(`/transactions/expenses-by-category?month=${month}&year=${year}`),
     get: (id) => request(`/transactions/${id}`),
     create: (body) => request('/transactions', { method: 'POST', body: JSON.stringify(body) }),
@@ -78,6 +86,14 @@ export const api = {
     get: (id) => request(`/transfers/${id}`),
     create: (body) => request('/transfers', { method: 'POST', body: JSON.stringify(body) }),
     delete: (id) => request(`/transfers/${id}`, { method: 'DELETE' }),
+  },
+  periodicTransfers: {
+    list: () => request('/periodic-transfers'),
+    create: (body) => request('/periodic-transfers', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id, body) => request(`/periodic-transfers/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: (id) => request(`/periodic-transfers/${id}`, { method: 'DELETE' }),
+    applyMonth: (month, year) => request('/periodic-transfers/apply-month', { method: 'POST', body: JSON.stringify({ month, year }) }),
+    applyOne: (id, month, year) => request(`/periodic-transfers/${id}/apply`, { method: 'POST', body: JSON.stringify({ month, year }) }),
   },
   settings: {
     get: () => request('/settings'),

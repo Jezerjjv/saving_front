@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   IconCalendar,
@@ -6,7 +7,12 @@ import {
   IconArrowLeftRight,
   IconSettings,
   IconLogo,
+  IconMenu,
+  IconChevronDown,
+  IconChevronUp,
 } from './components/Icons.jsx';
+import { useMovimientosSidebar } from './context/MovimientosSidebarContext';
+import { useLayoutHeaderContent } from './context/LayoutHeaderContext';
 
 const nav = [
   { to: '/movimientos', label: 'Movimientos', Icon: IconFileText },
@@ -16,100 +22,165 @@ const nav = [
   { to: '/configuracion', label: 'Config', Icon: IconSettings },
 ];
 
+const MAIN_TABS = [
+  { id: 'all', label: 'Todo' },
+  { id: 'expense', label: 'Gastos' },
+  { id: 'income', label: 'Ingresos' },
+];
+const DEFS_LABEL = 'Rápidos y Fijos';
+
 function isActive(path, location) {
-  if (path === '/movimientos') return location.pathname === '/movimientos';
+  if (path === '/movimientos') return location.pathname === '/movimientos' || location.pathname === '/rapidos-y-fijos';
   return location.pathname.startsWith(path);
 }
 
 export default function Layout({ children }) {
   const location = useLocation();
+  const { actionsRef, sidebarState } = useMovimientosSidebar();
+  const actions = actionsRef?.current;
+  const headerTitle = useLayoutHeaderContent();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const onNavClick = () => setSidebarOpen(false);
+
+  const isMovimientos = location.pathname === '/movimientos';
+  const isMovimientosSection = location.pathname === '/movimientos' || location.pathname === '/rapidos-y-fijos';
+  const activeTab = sidebarState?.activeTab ?? 'all';
+
   return (
-    <div className="layout-wrapper" style={styles.wrapper}>
-      <header className="layout-header" style={styles.header}>
-        <Link to="/" style={styles.logo} aria-label="Mi Finanzas">
-          <IconLogo size={36} style={{ color: 'var(--accent)' }} />
-        </Link>
-        <nav className="nav-top" style={styles.nav}>
-          {nav.map(({ to, label, Icon }) => (
-            <Link
-              key={to}
-              to={to}
-              style={{
-                ...styles.navLink,
-                ...(isActive(to, location) ? styles.navLinkActive : {}),
-              }}
-            >
-              <Icon size={20} />
-              {label}
+    <div className="layout-wrapper">
+      <div
+        className={`sidebar-overlay ${sidebarOpen ? 'is-open' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+        onKeyDown={(e) => e.key === 'Escape' && setSidebarOpen(false)}
+        role="button"
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+
+      <aside className={`layout-sidebar ${sidebarOpen ? 'is-open' : ''}`}>
+        <div className="sidebar-inner">
+          <div className="sidebar-header">
+            <Link to="/" className="sidebar-logo" onClick={onNavClick} aria-label="Mis Finanzas">
+            <IconLogo size={32} style={{ color: 'var(--accent)' }} />
+              <span className="sidebar-logo-text">Mis Finanzas</span>
             </Link>
-          ))}
-        </nav>
-      </header>
-      <main className="layout-main" style={styles.main} role="main">{children}</main>
-      <nav className="nav-bottom" aria-label="Navegación principal">
-        {nav.map(({ to, label, Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            className={`nav-bottom-link ${isActive(to, location) ? 'active' : ''}`}
-            aria-label={label}
-            aria-current={isActive(to, location) ? 'page' : undefined}
+            <button
+              type="button"
+              className="sidebar-close"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Cerrar menú"
+            >
+              ✕
+            </button>
+          </div>
+
+          <nav className="sidebar-nav" aria-label="Navegación principal">
+            {nav.map(({ to, label, Icon }) => (
+              <div key={to} className="sidebar-nav-item">
+                <Link
+                  to={to}
+                  className={`sidebar-link ${isActive(to, location) ? 'is-active' : ''}`}
+                  onClick={onNavClick}
+                  aria-current={isActive(to, location) ? 'page' : undefined}
+                >
+                  <Icon size={20} />
+                  <span>{label}</span>
+                </Link>
+                {to === '/movimientos' && isMovimientosSection && (
+                  <div className="sidebar-subnav">
+                    {actions && (
+                      <>
+                        <button
+                          type="button"
+                          className="sidebar-btn sidebar-btn-expense"
+                          onClick={() => { actions.openAdd('expense', 'normal'); onNavClick(); }}
+                        >
+                          <span className="sidebar-btn-symbol">+</span>
+                          Añadir gasto
+                        </button>
+                        <button
+                          type="button"
+                          className="sidebar-btn sidebar-btn-income"
+                          onClick={() => { actions.openAdd('income', 'normal'); onNavClick(); }}
+                        >
+                          <span className="sidebar-btn-symbol">+</span>
+                          Añadir ingreso
+                        </button>
+                        {MAIN_TABS.map((tab) => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            className={`sidebar-link-btn ${activeTab === tab.id ? 'is-active' : ''}`}
+                            onClick={() => { actions.setActiveTab(tab.id); onNavClick(); }}
+                          >
+                            {tab.id === 'all' && (
+                              <>
+                                <IconChevronDown size={16} className="sidebar-icon-expense" />
+                                <IconChevronUp size={16} className="sidebar-icon-income" />
+                              </>
+                            )}
+                            {tab.id === 'expense' && <IconChevronDown size={16} className="sidebar-icon-expense" />}
+                            {tab.id === 'income' && <IconChevronUp size={16} className="sidebar-icon-income" />}
+                            <span>{tab.label}</span>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                    {!actions && MAIN_TABS.map((tab) => (
+                      <Link
+                        key={tab.id}
+                        to="/movimientos"
+                        className={`sidebar-link-btn ${location.pathname === '/movimientos' ? 'is-active' : ''}`}
+                        onClick={onNavClick}
+                      >
+                        {tab.id === 'all' && (
+                          <>
+                            <IconChevronDown size={16} className="sidebar-icon-expense" />
+                            <IconChevronUp size={16} className="sidebar-icon-income" />
+                          </>
+                        )}
+                        {tab.id === 'expense' && <IconChevronDown size={16} className="sidebar-icon-expense" />}
+                        {tab.id === 'income' && <IconChevronUp size={16} className="sidebar-icon-income" />}
+                        <span>{tab.label}</span>
+                      </Link>
+                    ))}
+                    <Link
+                      to="/rapidos-y-fijos"
+                      className={`sidebar-link-btn ${location.pathname === '/rapidos-y-fijos' ? 'is-active' : ''}`}
+                      onClick={onNavClick}
+                      aria-current={location.pathname === '/rapidos-y-fijos' ? 'page' : undefined}
+                    >
+                      <IconFileText size={16} />
+                      <span>{DEFS_LABEL}</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            ))}
+          </nav>
+        </div>
+      </aside>
+
+      <main className="layout-main" role="main">
+        <header className="layout-header">
+          <button
+            type="button"
+            className="sidebar-toggle"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Abrir menú"
           >
-            <span className="nav-bottom-icon" aria-hidden="true"><Icon size={24} /></span>
-            <span className="nav-bottom-label">{label}</span>
-          </Link>
-        ))}
-      </nav>
+            <IconMenu size={24} />
+          </button>
+          {headerTitle ? <h1 className="layout-header-title">{headerTitle}</h1> : null}
+        </header>
+        <div className="layout-content">
+          {children}
+        </div>
+        <footer className="layout-footer">
+          © <span className="layout-footer-year">{new Date().getFullYear()}</span> jezer-saving
+        </footer>
+      </main>
     </div>
   );
 }
-
-const styles = {
-  wrapper: {
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  header: {
-    background: 'var(--surface)',
-    borderBottom: '1px solid var(--border)',
-    padding: '0.75rem 1rem',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '1rem',
-    flexWrap: 'wrap',
-  },
-  logo: {
-    display: 'flex',
-    alignItems: 'center',
-    textDecoration: 'none',
-    background: 'transparent',
-  },
-  nav: {
-    display: 'flex',
-    gap: '0.25rem',
-    flexWrap: 'wrap',
-  },
-  navLink: {
-    padding: '0.5rem 0.75rem',
-    borderRadius: 'var(--radius)',
-    color: 'var(--text-muted)',
-    textDecoration: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.4rem',
-    fontSize: '0.9rem',
-  },
-  navLinkActive: {
-    background: 'var(--surface-hover)',
-    color: 'var(--accent)',
-  },
-  main: {
-    flex: 1,
-    padding: '1rem',
-    maxWidth: 900,
-    margin: '0 auto',
-    width: '100%',
-  },
-};

@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useMessage } from '../context/MessageContext';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { useMovimientosSidebar } from '../context/MovimientosSidebarContext';
+import { useLayoutHeader } from '../context/LayoutHeaderContext';
 import TransactionAccordion from '../components/TransactionAccordion';
 import TransactionForm from '../components/TransactionForm';
 import Loader from '../components/Loader';
-import { IconEdit, IconTrash, IconApply, IconChevronDown, IconChevronUp, IconChevronRight, IconFileText } from '../components/Icons.jsx';
+import { IconEdit, IconTrash, IconApply, IconChevronDown, IconChevronUp, IconChevronRight } from '../components/Icons.jsx';
 
 const now = new Date();
 const currentMonth = now.getMonth() + 1;
@@ -22,14 +24,14 @@ const MAIN_TABS = [
   { id: 'expense', label: 'Gastos' },
   { id: 'income', label: 'Ingresos' },
 ];
-const DEFS_BUTTON_LABEL = 'Rápidos y Fijos';
-
 export default function Transactions() {
   const { showMessage, confirm } = useMessage();
   const { primaryAccountId, blurBalance } = useAppSettings();
+  const sidebarContext = useMovimientosSidebar();
   const [searchParams, setSearchParams] = useSearchParams();
   const monthParam = searchParams.get('month');
   const yearParam = searchParams.get('year');
+  const dayParam = searchParams.get('day');
   const [month, setMonthState] = useState(monthParam ? Number(monthParam) : currentMonth);
   const [year, setYearState] = useState(yearParam ? Number(yearParam) : currentYear);
   const [grouped, setGrouped] = useState([]);
@@ -47,8 +49,6 @@ export default function Transactions() {
   const [editingFixed, setEditingFixed] = useState(null);
   const [editingQuick, setEditingQuick] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
-  const [definitionsModalOpen, setDefinitionsModalOpen] = useState(false);
-  const [definitionsModalTab, setDefinitionsModalTab] = useState('expense');
   const [applyingFixedIncomes, setApplyingFixedIncomes] = useState(false);
   const [applyingFixedExpenses, setApplyingFixedExpenses] = useState(false);
   const [expensesByCategory, setExpensesByCategory] = useState([]);
@@ -56,7 +56,8 @@ export default function Transactions() {
   const [applyingQuickId, setApplyingQuickId] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [searchCategoryId, setSearchCategoryId] = useState('');
-  const [searchDay, setSearchDay] = useState('');
+  const dayNumFromUrl = dayParam != null && dayParam !== '' ? Number(dayParam) : NaN;
+  const [searchDay, setSearchDay] = useState((dayNumFromUrl >= 1 && dayNumFromUrl <= 31) ? String(dayNumFromUrl) : '');
 
   const setMonth = (m) => {
     const val = Math.min(12, Math.max(1, m));
@@ -74,6 +75,11 @@ export default function Transactions() {
       setYearState(Number(yearParam));
     }
   }, [monthParam, yearParam]);
+
+  useEffect(() => {
+    const d = dayParam != null && dayParam !== '' ? Number(dayParam) : NaN;
+    if (d >= 1 && d <= 31) setSearchDay(String(d));
+  }, [dayParam]);
 
   const load = () => {
     setLoading(true);
@@ -130,6 +136,32 @@ export default function Transactions() {
     setEditingQuick(null);
     setShowForm(true);
   };
+
+  const openAddRef = useRef(openAdd);
+  const setActiveTabRef = useRef(setActiveTab);
+  openAddRef.current = openAdd;
+  setActiveTabRef.current = setActiveTab;
+
+  const sidebarCtxRef = useRef(sidebarContext);
+  sidebarCtxRef.current = sidebarContext;
+
+  useEffect(() => {
+    const ctx = sidebarCtxRef.current;
+    if (!ctx) return;
+    ctx.register({
+      openAdd: (...args) => openAddRef.current(...args),
+      setActiveTab: (id) => setActiveTabRef.current(id),
+    });
+    return () => {
+      if (sidebarCtxRef.current) sidebarCtxRef.current.unregister();
+    };
+  }, []);
+
+  useEffect(() => {
+    const ctx = sidebarCtxRef.current;
+    if (!ctx) return;
+    ctx.updateState({ activeTab });
+  }, [activeTab]);
 
   const openEditTx = (tx) => {
     setFormType(tx.type === 'expense' ? 'expense' : 'income');
@@ -358,6 +390,8 @@ export default function Transactions() {
     return result;
   };
 
+  useLayoutHeader('Movimientos');
+
   const primaryAccount = primaryAccountId != null && Array.isArray(accounts) ? accounts.find((a) => a.id === primaryAccountId) : null;
   const primaryTotals = primaryAccountId != null && Array.isArray(grouped) && grouped.length > 0
     ? grouped.reduce(
@@ -379,10 +413,6 @@ export default function Transactions() {
 
   return (
     <div className="page-transactions">
-      <div style={styles.header}>
-        <h1 style={styles.title}>Movimientos</h1>
-      </div>
-
       {primaryAccount && (
         <div style={styles.primaryAccountCard}>
           <div style={styles.primaryAccountRow}>
@@ -446,50 +476,6 @@ export default function Transactions() {
           })}
         </div>
       ) : null}
-
-      <div className="tabs-row">
-        <div className="tabs-add-buttons">
-          <button type="button" onClick={() => openAdd('expense', 'normal')} style={styles.btnExpense} className="touch-target" aria-label="Añadir gasto">
-            <span className="btn-add-symbol">+</span>
-            <span className="btn-add-label"> Añadir gasto</span>
-          </button>
-          <button type="button" onClick={() => openAdd('income', 'normal')} style={styles.btnIncome} className="touch-target" aria-label="Añadir ingreso">
-            <span className="btn-add-symbol">+</span>
-            <span className="btn-add-label"> Añadir ingreso</span>
-          </button>
-        </div>
-        <div className="tabs-filters">
-          {MAIN_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              style={{ ...styles.tab, ...(activeTab === tab.id ? styles.tabActive : {}) }}
-              title={tab.label}
-            >
-              {tab.id === 'all' && (
-                <>
-                  <IconChevronDown size={18} style={{ color: 'var(--expense)' }} className="tabs-filter-icon" />
-                  <IconChevronUp size={18} style={{ color: 'var(--income)' }} className="tabs-filter-icon" />
-                </>
-              )}
-              {tab.id === 'expense' && <IconChevronDown size={18} style={{ color: 'var(--expense)' }} className="tabs-filter-icon" />}
-              {tab.id === 'income' && <IconChevronUp size={18} style={{ color: 'var(--income)' }} className="tabs-filter-icon" />}
-              <span className="tabs-filter-label">{tab.label}</span>
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setDefinitionsModalOpen(true)}
-            style={{ ...styles.tab, ...(definitionsModalOpen ? styles.tabActive : {}) }}
-            title={DEFS_BUTTON_LABEL}
-          >
-            <IconFileText size={18} className="tabs-filter-icon" />
-            <span className="tabs-filter-label tabs-filter-label-full">{DEFS_BUTTON_LABEL}</span>
-            <span className="tabs-filter-label tabs-filter-label-short">R. y F.</span>
-          </button>
-        </div>
-      </div>
 
       <div className="nav-month" style={styles.navMonth}>
         <button type="button" onClick={prevMonth} className="nav-month-btn" aria-label="Mes anterior">‹</button>
@@ -559,143 +545,6 @@ export default function Transactions() {
               Limpiar
             </button>
           )}
-        </div>
-      )}
-
-      {definitionsModalOpen && (
-        <div className="modal-overlay-dark-scroll" style={styles.modalOverlay} onClick={() => setDefinitionsModalOpen(false)}>
-          <div className="modal-definitions" style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <h2 style={styles.modalTitle}>{DEFS_BUTTON_LABEL}</h2>
-              <button type="button" onClick={() => setDefinitionsModalOpen(false)} style={styles.closeBtn}>✕</button>
-            </div>
-            <div style={styles.modalTabs}>
-              <button
-                type="button"
-                onClick={() => setDefinitionsModalTab('expense')}
-                style={{ ...styles.modalTab, ...(definitionsModalTab === 'expense' ? styles.modalTabActive : {}) }}
-              >
-                Gastos
-              </button>
-              <button
-                type="button"
-                onClick={() => setDefinitionsModalTab('income')}
-                style={{ ...styles.modalTab, ...(definitionsModalTab === 'income' ? styles.modalTabActive : {}) }}
-              >
-                Ingresos
-              </button>
-            </div>
-            <div style={styles.modalBody}>
-              {definitionsModalTab === 'expense' && (
-                <section style={styles.defBlock}>
-                  <section style={styles.defSection}>
-                    <h4 style={styles.defSectionTitle}>Gastos fijos</h4>
-                    <div style={styles.actions}>
-                      <button type="button" onClick={() => { openAdd('expense', 'fixed'); setDefinitionsModalOpen(false); }} style={styles.btnExpense} className="touch-target">+ Crear gasto fijo</button>
-                      <button type="button" onClick={applyFixedExpenses} disabled={applyingFixedExpenses} style={styles.btnFixed} className="touch-target">{applyingFixedExpenses ? '…' : 'Aplicar ahora (mes actual)'}</button>
-                    </div>
-                    <ul style={styles.defList}>
-                      {fixedExpenses.map((f) => (
-                        <li key={f.id} style={styles.defCard}>
-                          <div style={styles.defCardContent}>
-                            <div style={styles.defCardName}>{f.name}</div>
-                            <div style={styles.defCardMeta}>
-                              <span style={styles.amountExpense}>{new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(f.amount)}</span>
-                              <span style={styles.muted}> · día {f.dayOfMonth ?? 1}</span>
-                            </div>
-                          </div>
-                          <div style={styles.cardActions}>
-                            <button type="button" className="btn-icon-action" onClick={() => applySingleFixedExpense(f.id)} style={styles.btnApplyIcon} aria-label="Aplicar" title="Aplicar"><IconApply size={20} /></button>
-                            <button type="button" className="btn-icon-action" onClick={() => { openEditFixed(f, 'expense'); setDefinitionsModalOpen(false); }} style={styles.btnIcon} aria-label="Editar"><IconEdit size={18} /></button>
-                            <button type="button" className="btn-icon-action" onClick={() => deleteFixedExpense(f.id)} style={styles.btnIconDanger} aria-label="Eliminar"><IconTrash size={18} /></button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                    {fixedExpenses.length === 0 && <p style={styles.empty}>No hay gastos fijos.</p>}
-                  </section>
-                  <section style={styles.defSection}>
-                    <h4 style={styles.defSectionTitle}>Gastos rápidos</h4>
-                    <div style={styles.actions}>
-                      <button type="button" onClick={() => { openAdd('expense', 'quick'); setDefinitionsModalOpen(false); }} style={styles.btnExpense} className="touch-target">+ Crear gasto rápido</button>
-                    </div>
-                    <ul style={styles.defList}>
-                      {quickTemplatesExpense.map((t) => (
-                        <li key={t.id} style={styles.defCard}>
-                          <div style={styles.defCardContent}>
-                            <div style={styles.defCardName}>{t.name}</div>
-                            <div style={styles.defCardMeta}>
-                              <span style={styles.amountExpense}>{new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(t.amount)}</span>
-                            </div>
-                          </div>
-                          <div style={styles.cardActions}>
-                            <button type="button" className="btn-icon-action" onClick={() => applyQuickTemplate(t)} style={styles.btnApplyIcon} aria-label="Aplicar" title="Aplicar"><IconApply size={20} /></button>
-                            <button type="button" className="btn-icon-action" onClick={() => { openEditQuick(t, 'expense'); setDefinitionsModalOpen(false); }} style={styles.btnIcon} aria-label="Editar"><IconEdit size={18} /></button>
-                            <button type="button" className="btn-icon-action" onClick={() => deleteQuickTemplate(t.id)} style={styles.btnIconDanger} aria-label="Eliminar"><IconTrash size={18} /></button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                    {quickTemplatesExpense.length === 0 && <p style={styles.empty}>No hay gastos rápidos.</p>}
-                  </section>
-                </section>
-              )}
-              {definitionsModalTab === 'income' && (
-                <section style={styles.defBlock}>
-                  <section style={styles.defSection}>
-                    <h4 style={styles.defSectionTitle}>Ingresos fijos</h4>
-                    <div style={styles.actions}>
-                      <button type="button" onClick={() => { openAdd('income', 'fixed'); setDefinitionsModalOpen(false); }} style={styles.btnIncome} className="touch-target">+ Crear ingreso fijo</button>
-                      <button type="button" onClick={applyFixedIncomes} disabled={applyingFixedIncomes} style={styles.btnFixed} className="touch-target">{applyingFixedIncomes ? '…' : 'Aplicar ahora (mes actual)'}</button>
-                    </div>
-                    <ul style={styles.defList}>
-                      {fixedIncomes.map((f) => (
-                        <li key={f.id} style={styles.defCard}>
-                          <div style={styles.defCardContent}>
-                            <div style={styles.defCardName}>{f.name}</div>
-                            <div style={styles.defCardMeta}>
-                              <span style={styles.amountIncome}>{new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(f.amount)}</span>
-                              <span style={styles.muted}> · día {f.dayOfMonth ?? 1}</span>
-                            </div>
-                          </div>
-                          <div style={styles.cardActions}>
-                            <button type="button" className="btn-icon-action" onClick={() => applySingleFixedIncome(f.id)} style={styles.btnApplyIconIncome} aria-label="Aplicar" title="Aplicar"><IconApply size={20} /></button>
-                            <button type="button" className="btn-icon-action" onClick={() => { openEditFixed(f, 'income'); setDefinitionsModalOpen(false); }} style={styles.btnIcon} aria-label="Editar"><IconEdit size={18} /></button>
-                            <button type="button" className="btn-icon-action" onClick={() => deleteFixedIncome(f.id)} style={styles.btnIconDanger} aria-label="Eliminar"><IconTrash size={18} /></button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                    {fixedIncomes.length === 0 && <p style={styles.empty}>No hay ingresos fijos.</p>}
-                  </section>
-                  <section style={styles.defSection}>
-                    <h4 style={styles.defSectionTitle}>Ingresos rápidos</h4>
-                    <div style={styles.actions}>
-                      <button type="button" onClick={() => { openAdd('income', 'quick'); setDefinitionsModalOpen(false); }} style={styles.btnIncome} className="touch-target">+ Crear ingreso rápido</button>
-                    </div>
-                    <ul style={styles.defList}>
-                      {quickTemplatesIncome.map((t) => (
-                        <li key={t.id} style={styles.defCard}>
-                          <div style={styles.defCardContent}>
-                            <div style={styles.defCardName}>{t.name}</div>
-                            <div style={styles.defCardMeta}>
-                              <span style={styles.amountIncome}>{new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(t.amount)}</span>
-                            </div>
-                          </div>
-                          <div style={styles.cardActions}>
-                            <button type="button" className="btn-icon-action" onClick={() => applyQuickTemplate(t)} style={styles.btnApplyIconIncome} aria-label="Aplicar" title="Aplicar"><IconApply size={20} /></button>
-                            <button type="button" className="btn-icon-action" onClick={() => { openEditQuick(t, 'income'); setDefinitionsModalOpen(false); }} style={styles.btnIcon} aria-label="Editar"><IconEdit size={18} /></button>
-                            <button type="button" className="btn-icon-action" onClick={() => deleteQuickTemplate(t.id)} style={styles.btnIconDanger} aria-label="Eliminar"><IconTrash size={18} /></button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                    {quickTemplatesIncome.length === 0 && <p style={styles.empty}>No hay ingresos rápidos.</p>}
-                  </section>
-                </section>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -806,8 +655,6 @@ export default function Transactions() {
 }
 
 const styles = {
-  header: { marginBottom: '0.75rem' },
-  title: { fontSize: '1.5rem', margin: 0, fontWeight: 600 },
   primaryAccountCard: {
     display: 'flex',
     flexDirection: 'column',
@@ -817,6 +664,8 @@ const styles = {
     background: 'var(--surface)',
     border: '1px solid var(--border)',
     borderRadius: 'var(--radius)',
+    width: '100%',
+    boxSizing: 'border-box',
   },
   primaryAccountRow: { display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' },
   primaryAccountLabel: { fontSize: '0.85rem', color: 'var(--text-muted)' },
@@ -833,7 +682,7 @@ const styles = {
   primaryAccountTotalItem: { display: 'flex', flexDirection: 'column', gap: '0.15rem' },
   primaryAccountTotalLabel: { fontSize: '0.75rem', color: 'var(--text-muted)' },
   primaryAccountTotalAmount: { fontWeight: 600, fontSize: '0.95rem' },
-  quickBar: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.6rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' },
+  quickBar: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.6rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', width: '100%', boxSizing: 'border-box' },
   quickChip: { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.75rem', border: 'none', borderRadius: 'var(--radius)', fontWeight: 500, fontSize: '0.9rem', cursor: 'pointer', color: '#fff' },
   quickChipIcon: { fontSize: '1rem', lineHeight: 1 },
   quickChipExpense: { background: 'var(--expense)' },
@@ -841,50 +690,21 @@ const styles = {
   tabs: { display: 'flex', gap: '0.25rem', marginBottom: '1rem' },
   tab: { padding: '0.5rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', fontSize: '0.9rem' },
   tabActive: { background: 'var(--surface-hover)', color: 'var(--accent)', border: '1px solid var(--accent)' },
-  navMonth: { marginBottom: '1rem' },
+  navMonth: { marginBottom: '1rem', width: '100%' },
   monthYear: { display: 'flex', gap: '0.25rem', flexWrap: 'wrap' },
   select: { padding: '0.5rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '0.9rem', minHeight: 'var(--touch-min)', fontFamily: 'inherit', cursor: 'pointer' },
-  hint: { fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' },
-  searchBar: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' },
+  hint: { fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem', textAlign: 'center' },
+  searchBar: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', width: '100%' },
   searchInput: { flex: '1 1 12rem', minWidth: 0, padding: '0.5rem 1rem', minHeight: 'var(--touch-min)', boxSizing: 'border-box', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '0.9rem' },
-  searchSelect: { padding: '0.5rem 1rem', minHeight: 'var(--touch-min)', boxSizing: 'border-box', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '0.9rem' },
-  searchDay: { width: '6rem', minWidth: '6rem', padding: '0.5rem 0.75rem', minHeight: 'var(--touch-min)', boxSizing: 'border-box', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '0.9rem', textAlign: 'center' },
-  searchClear: { padding: '0.5rem 1rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', fontSize: '0.9rem' },
-  actions: { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' },
-  btnExpense: { padding: '0.6rem 1rem', background: 'var(--expense)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', fontWeight: 500 },
-  btnIncome: { padding: '0.6rem 1rem', background: 'var(--income)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', fontWeight: 500 },
-  btnFixed: { padding: '0.6rem 1rem', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 500 },
-  defList: { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' },
-  defCard: { display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', minHeight: 'var(--touch-min)' },
-  defCardContent: { flex: 1, minWidth: 0 },
-  defCardName: { fontWeight: 500, wordBreak: 'break-word', lineHeight: 1.3 },
-  defCardMeta: { fontSize: '0.85rem', marginTop: '0.2rem', color: 'var(--text-muted)' },
-  amountExpense: { color: 'var(--expense)', fontWeight: 500 },
-  amountIncome: { color: 'var(--income)', fontWeight: 500 },
-  muted: { fontSize: '0.85rem', color: 'var(--text-muted)' },
-  cardActions: { flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.25rem' },
-  btnApplyIcon: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, padding: 0, background: 'var(--btn-apply-bg)', color: 'var(--btn-apply-color)', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer' },
-  btnApplyIconIncome: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, padding: 0, background: 'var(--btn-apply-bg)', color: 'var(--btn-apply-color)', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer' },
-  btnIcon: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, padding: 0, background: 'var(--btn-edit-bg)', color: 'var(--btn-edit-color)', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer' },
-  btnIconDanger: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, padding: 0, background: 'var(--btn-delete-bg)', color: 'var(--btn-delete-color)', border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer' },
-  accordions: { marginTop: '0.5rem' },
-  empty: { color: 'var(--text-muted)', fontSize: '0.9rem' },
-  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem', overflowY: 'auto' },
-  modalBox: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', maxWidth: 640, width: '100%', maxHeight: '90vh', overflow: 'auto' },
-  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid var(--border)' },
-  modalTitle: { margin: 0, fontSize: '1.15rem', fontWeight: 600 },
-  closeBtn: { background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem', padding: '0.25rem', cursor: 'pointer' },
-  modalTabs: { display: 'flex', gap: '0.25rem', padding: '0.75rem 1rem 0', borderBottom: '1px solid var(--border)' },
-  modalTab: { padding: '0.5rem 1rem', background: 'transparent', border: 'none', borderBottom: '2px solid transparent', marginBottom: '-1px', color: 'var(--text-muted)', fontSize: '0.95rem', borderRadius: 0 },
-  modalTabActive: { color: 'var(--accent)', borderBottom: '2px solid var(--accent)', fontWeight: 600 },
-  modalBody: { padding: '1rem' },
-  defBlock: { marginBottom: '1.5rem' },
-  defBlockTitle: { margin: '0 0 0.75rem', fontSize: '1rem', fontWeight: 700, color: 'var(--text)' },
-  defSection: { marginBottom: '1.25rem' },
-  defSectionTitle: { margin: '0 0 0.5rem', fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-muted)' },
-  summaryBlock: { marginTop: '1.5rem', marginBottom: '0.5rem' },
+  searchSelect: { flex: '1 1 10rem', minWidth: 0, padding: '0.5rem 1rem', minHeight: 'var(--touch-min)', boxSizing: 'border-box', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '0.9rem' },
+  searchDay: { width: '5rem', minWidth: '5rem', flexShrink: 0, padding: '0.5rem 0.75rem', minHeight: 'var(--touch-min)', boxSizing: 'border-box', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '0.9rem', textAlign: 'center' },
+  searchClear: { padding: '0.5rem 1rem', minHeight: 'var(--touch-min)', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', fontSize: '0.9rem' },
+  accordions: { marginTop: '0.5rem', width: '100%' },
+  empty: { color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 },
+  summaryBlock: { marginTop: '1.5rem', marginBottom: '0.5rem', width: '100%' },
   summaryHeader: {
     width: '100%',
+    boxSizing: 'border-box',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',

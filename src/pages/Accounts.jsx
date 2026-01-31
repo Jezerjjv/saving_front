@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { useMessage } from '../context/MessageContext';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { useLayoutHeader } from '../context/LayoutHeaderContext';
 import Loader from '../components/Loader';
 import { IconEdit, IconTrash, IconStar } from '../components/Icons.jsx';
 
@@ -10,19 +11,34 @@ const ACCOUNT_TYPES = [
   { value: 'cash', label: 'Efectivo' },
 ];
 
-function formatEur(n) {
-  return new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(n ?? 0);
+const CURRENCIES = [
+  { value: 'EUR', label: 'Euro (€)', symbol: '€' },
+  { value: 'USD', label: 'Dólar ($)', symbol: '$' },
+];
+
+function formatMoney(n, currency = 'EUR') {
+  return new Intl.NumberFormat('es', { style: 'currency', currency }).format(n ?? 0);
 }
 
 export default function Accounts() {
+  useLayoutHeader('Cuentas');
   const { showMessage, confirm } = useMessage();
-  const { blurBalance, primaryAccountId, setPrimaryAccountId } = useAppSettings();
+  const { blurBalance, primaryAccountId, setPrimaryAccountId, appCurrency, exchangeRateUsdToEur } = useAppSettings();
   const [accounts, setAccounts] = useState([]);
   const [productTypes, setProductTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', balance: '0', accountType: 'bank' });
+  const [form, setForm] = useState({ name: '', balance: '0', accountType: 'bank', currency: 'EUR' });
+
+  const toAppCurrency = (amount, accountCurrency) => {
+    const amt = Number(amount) || 0;
+    if (accountCurrency === appCurrency) return amt;
+    const rate = Number(exchangeRateUsdToEur) || 0.92;
+    if (appCurrency === 'EUR' && accountCurrency === 'USD') return amt * rate;
+    if (appCurrency === 'USD' && accountCurrency === 'EUR') return amt / rate;
+    return amt;
+  };
   const [productsByAccount, setProductsByAccount] = useState({});
   const [expandedProducts, setExpandedProducts] = useState(null);
   const [productForm, setProductForm] = useState({ name: '', productTypeId: '', balance: '0', interestRateAnnual: '' });
@@ -62,7 +78,8 @@ export default function Accounts() {
     const base = Number(a.balance) || 0;
     const products = productsByAccount[a.id] || [];
     const productsSum = products.reduce((s, p) => s + (Number(p.balance) || 0), 0);
-    return sum + base + productsSum;
+    const accountTotalAmount = base + productsSum;
+    return sum + toAppCurrency(accountTotalAmount, a.currency || 'EUR');
   }, 0);
 
   const accountTotal = (a) => {
@@ -74,13 +91,13 @@ export default function Accounts() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: '', balance: '0', accountType: 'bank' });
+    setForm({ name: '', balance: '0', accountType: 'bank', currency: 'EUR' });
     setShowForm(true);
   };
 
   const openEdit = (a) => {
     setEditing(a.id);
-    setForm({ name: a.name, balance: String(a.balance ?? 0), accountType: a.accountType || 'bank' });
+    setForm({ name: a.name, balance: String(a.balance ?? 0), accountType: a.accountType || 'bank', currency: a.currency || 'EUR' });
     setShowForm(true);
   };
 
@@ -163,12 +180,12 @@ export default function Accounts() {
     e.preventDefault();
     try {
       if (editing) {
-        await api.accounts.update(editing, { name: form.name, balance: Number(form.balance) || 0, accountType: form.accountType });
+        await api.accounts.update(editing, { name: form.name, balance: Number(form.balance) || 0, accountType: form.accountType, currency: form.currency });
       } else {
-        await api.accounts.create({ name: form.name, balance: Number(form.balance) || 0, accountType: form.accountType });
+        await api.accounts.create({ name: form.name, balance: Number(form.balance) || 0, accountType: form.accountType, currency: form.currency });
       }
       setEditing(null);
-      setForm({ name: '', balance: '0', accountType: 'bank' });
+      setForm({ name: '', balance: '0', accountType: 'bank', currency: 'EUR' });
       setShowForm(false);
       load();
       showMessage(editing ? 'Cuenta actualizada.' : 'Cuenta creada.', 'success');
@@ -198,8 +215,7 @@ export default function Accounts() {
 
   return (
     <div className="page-accounts">
-      <div style={styles.header}>
-        <h1 style={styles.title}>Cuentas</h1>
+      <div style={styles.actionsRow}>
         <button type="button" onClick={openCreate} style={styles.btnPrimary} className="touch-target">
           + Nueva cuenta
         </button>
@@ -207,9 +223,9 @@ export default function Accounts() {
 
       {accounts.length > 0 && (
         <div style={styles.totalGlobal}>
-          <span style={styles.totalGlobalLabel}>Total todas las cuentas</span>
+          <span style={styles.totalGlobalLabel}>Total todas las cuentas ({appCurrency === 'EUR' ? '€' : '$'})</span>
           <span style={{ ...styles.totalGlobalValue, ...(blurBalance ? styles.balanceBlur : {}) }} className={blurBalance ? 'balance-blur' : ''}>
-            {formatEur(totalGlobal)}
+            {formatMoney(totalGlobal, appCurrency)}
           </span>
         </div>
       )}
@@ -233,6 +249,16 @@ export default function Accounts() {
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
+          <label style={styles.label}>Moneda de la cuenta</label>
+          <select
+            value={form.currency}
+            onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
+            style={styles.input}
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
           <input
             type="number"
             step="0.01"
@@ -245,7 +271,7 @@ export default function Accounts() {
             <button type="submit" style={styles.btnPrimary}>
               {editing ? 'Guardar' : 'Crear'}
             </button>
-            <button type="button" onClick={() => { setEditing(null); setForm({ name: '', balance: '0', accountType: 'bank' }); setShowForm(false); }} style={styles.btnSecondary}>
+            <button type="button" onClick={() => { setEditing(null); setForm({ name: '', balance: '0', accountType: 'bank', currency: 'EUR' }); setShowForm(false); }} style={styles.btnSecondary}>
               Cancelar
             </button>
           </div>
@@ -275,18 +301,18 @@ export default function Accounts() {
                   <div style={styles.balanceRow}>
                     <span style={styles.balanceLabel}>Saldo base</span>
                     <span style={styles.balanceValue} className={blurBalance ? 'balance-blur' : ''} title="Es el saldo que se descuenta con gastos e ingresos">
-                      {formatEur(base)}
+                      {formatMoney(base, a.currency || 'EUR')}
                     </span>
                   </div>
                   {isBank && productsSum !== 0 && (
                     <div style={styles.balanceRow}>
                       <span style={styles.balanceLabel}>+ Productos</span>
-                      <span style={styles.balanceValue} className={blurBalance ? 'balance-blur' : ''}>{formatEur(productsSum)}</span>
+                      <span style={styles.balanceValue} className={blurBalance ? 'balance-blur' : ''}>{formatMoney(productsSum, a.currency || 'EUR')}</span>
                     </div>
                   )}
                   <div style={styles.totalRow}>
                     <span style={styles.totalLabel}>Total cuenta</span>
-                    <span style={styles.totalValue} className={blurBalance ? 'balance-blur' : ''}>{formatEur(total)}</span>
+                    <span style={styles.totalValue} className={blurBalance ? 'balance-blur' : ''}>{formatMoney(total, a.currency || 'EUR')}</span>
                   </div>
                 </>
               );
@@ -370,7 +396,7 @@ export default function Accounts() {
                                   <> · se aplica al saldo de la cuenta</>
                                 )
                               ) : (
-                                <> · {formatEur(p.balance)}</>
+                                <> · {formatMoney(p.balance, a.currency || 'EUR')}</>
                               )}
                             </span>
                           </div>
@@ -389,8 +415,8 @@ export default function Accounts() {
               </div>
             )}
             <div style={styles.cardActions}>
-              <button type="button" className="btn-icon-action" onClick={() => openEdit(a)} style={styles.btnIcon} title="Editar" aria-label="Editar"><IconEdit size={18} /></button>
-              <button type="button" className="btn-icon-action" onClick={() => remove(a.id)} style={styles.btnIconDanger} title="Eliminar" aria-label="Eliminar"><IconTrash size={18} /></button>
+              <button type="button" className="btn-icon-action" onClick={() => openEdit(a)} style={styles.btnIcon} title="Editar" aria-label="Editar"><IconEdit size={16} /></button>
+              <button type="button" className="btn-icon-action" onClick={() => remove(a.id)} style={styles.btnIconDanger} title="Eliminar" aria-label="Eliminar"><IconTrash size={16} /></button>
             </div>
           </article>
         ))}
@@ -403,8 +429,7 @@ export default function Accounts() {
 }
 
 const styles = {
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' },
-  title: { fontSize: '1.5rem', margin: 0, fontWeight: 600 },
+  actionsRow: { marginBottom: '1rem' },
   totalGlobal: {
     display: 'flex', flexDirection: 'column', gap: '0.25rem',
     padding: '1rem 1.25rem', marginBottom: '1rem',
@@ -467,8 +492,8 @@ const styles = {
   cardActions: { display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '1rem' },
   btnPrimary: { padding: '0.6rem 1.2rem', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: 'var(--radius)', fontWeight: 500, fontSize: '1rem' },
   btnSecondary: { padding: '0.6rem 1.2rem', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '1rem' },
-  btnIcon: { padding: 0, fontSize: '1rem', background: 'var(--btn-edit-bg)', color: 'var(--btn-edit-color)', border: 'none', borderRadius: 'var(--radius)', minWidth: 40, minHeight: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
-  btnIconDanger: { padding: 0, fontSize: '1rem', background: 'var(--btn-delete-bg)', color: 'var(--btn-delete-color)', border: 'none', borderRadius: 'var(--radius)', minWidth: 40, minHeight: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  btnIcon: { padding: 0, fontSize: '0.9rem', background: 'var(--btn-edit-bg)', color: 'var(--btn-edit-color)', border: 'none', borderRadius: 'var(--radius)', width: 32, height: 32, minWidth: 32, minHeight: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  btnIconDanger: { padding: 0, fontSize: '0.9rem', background: 'var(--btn-delete-bg)', color: 'var(--btn-delete-color)', border: 'none', borderRadius: 'var(--radius)', width: 32, height: 32, minWidth: 32, minHeight: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
   loading: { color: 'var(--text-muted)' },
   empty: { color: 'var(--text-muted)', marginTop: '1rem' },
 };

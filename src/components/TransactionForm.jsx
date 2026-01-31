@@ -2,14 +2,13 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { api } from '../api';
 import { useMessage } from '../context/MessageContext';
 import { useAppSettings } from '../context/AppSettingsContext';
+import IconPicker from './IconPicker.jsx';
 
 const KINDS = [
   { id: 'normal', label: 'Normal' },
   { id: 'fixed', label: 'Fijo' },
   { id: 'quick', label: 'Rápido' },
 ];
-
-const QUICK_ICONS = ['📁', '🍔', '🚗', '🏠', '💡', '📱', '🛒', '☕', '💰', '🎁', '✈️', '📚', '🏥', '👕', '🍕', '⚽', '🎬', '💼', '🧾', '🏦'];
 
 export default function TransactionForm({
   type,
@@ -52,6 +51,7 @@ export default function TransactionForm({
     showInQuick: true,
     icon: '📁',
   });
+  const [icons, setIcons] = useState([]);
 
   useEffect(() => {
     if (editingTx) {
@@ -103,6 +103,12 @@ export default function TransactionForm({
       });
     }
   }, [editingTx, editingFixed, editingQuick, defaultKind, categories, accounts, primaryAccountId]);
+
+  useEffect(() => {
+    if (kind === 'quick' || editingQuick) {
+      api.icons.list().then((data) => setIcons(Array.isArray(data) ? data : [])).catch(() => setIcons([]));
+    }
+  }, [kind, editingQuick]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -168,77 +174,92 @@ export default function TransactionForm({
 
   return (
     <div style={styles.overlay}>
-      <div style={styles.modal}>
+      <div style={styles.modal} className="modal-panel">
         <div style={styles.modalHeader}>
           <h2 style={styles.modalTitle}>{title}</h2>
-          <button type="button" onClick={onClose} style={styles.closeBtn}>✕</button>
+          <button type="button" onClick={onClose} style={styles.closeBtn} aria-label="Cerrar">✕</button>
         </div>
         <form onSubmit={submit} style={styles.form}>
           {!isEditing && (
-            <>
-              <label style={styles.label}>Tipo de movimiento</label>
+            <div style={styles.formRowTwo}>
+              <div style={styles.fieldWrap}>
+                <label style={styles.label}>Tipo</label>
+                <select
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value)}
+                  className="select-modern"
+                  style={styles.input}
+                >
+                  {KINDS.map((k) => (
+                    <option key={k.id} value={k.id}>{k.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={styles.fieldWrap}>
+                <label style={styles.label}>Categoría</label>
+                <select
+                  value={form.categoryId}
+                  onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
+                  className="select-modern"
+                  style={styles.input}
+                >
+                  <option value="">Sin categoría</option>
+                  {categories?.map((c) => (
+                    <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+          {isEditing && (
+            <div style={styles.fieldWrap}>
+              <label style={styles.label}>Categoría</label>
               <select
-                value={kind}
-                onChange={(e) => setKind(e.target.value)}
+                value={form.categoryId}
+                onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
+                className="select-modern"
                 style={styles.input}
               >
-                {KINDS.map((k) => (
-                  <option key={k.id} value={k.id}>{k.label}</option>
+                <option value="">Sin categoría</option>
+                {categories?.map((c) => (
+                  <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                 ))}
               </select>
-            </>
+            </div>
           )}
-          <label style={styles.label}>Nombre</label>
-          <input
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="Ej. Café, Nómina, Gym..."
-            style={styles.input}
-            required
-          />
-          <label style={styles.label}>Categoría</label>
-          <select
-            value={form.categoryId}
-            onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
-            style={styles.input}
-          >
-            <option value="">Sin categoría</option>
-            {categories?.map((c) => (
-              <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-            ))}
-          </select>
-          <label style={styles.label}>Monto (€)</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={form.amount}
-            onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-            style={styles.input}
-            required
-          />
-          <label style={styles.label}>Cuenta</label>
-          <select
-            value={form.accountId}
-            onChange={(e) => setForm((f) => ({ ...f, accountId: e.target.value }))}
-            style={styles.input}
-            required
-          >
-            {accountsSorted.map((a) => (
-              <option key={a.id} value={a.id}>
-                {primaryAccountId === a.id ? '⭐ ' : ''}{a.name}
-              </option>
-            ))}
-          </select>
-
-          {(kind === 'normal' || editingTx) && (
-            <>
+          <div style={styles.fieldWrap}>
+            <label style={styles.label}>Nombre</label>
+            <input
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="Ej. Café, Nómina, Gym..."
+              className="input-modern"
+              style={styles.input}
+              required
+            />
+          </div>
+          {(kind === 'normal' || editingTx) ? (
+            <div style={styles.formRowTwo}>
+              <div style={styles.fieldWrap}>
+                <label style={styles.label}>Monto (€)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.amount}
+                  onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                  className="input-modern"
+                  style={styles.input}
+                  required
+                />
+              </div>
               <div
-                role="button"
-                tabIndex={0}
+                style={styles.dateFieldWrap}
                 onClick={() => { dateInputRef.current?.showPicker?.(); dateInputRef.current?.focus(); }}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dateInputRef.current?.showPicker?.(); dateInputRef.current?.focus(); } }}
-                style={styles.dateRow}
+                role="button"
+                tabIndex={0}
+                aria-label="Abrir selector de fecha"
               >
                 <label style={styles.label}>Fecha</label>
                 <input
@@ -246,42 +267,73 @@ export default function TransactionForm({
                   type="date"
                   value={form.date}
                   onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ ...styles.input, marginBottom: 0 }}
+                  className="input-modern input-date-picker"
+                  style={styles.input}
+                  onClick={(e) => { e.stopPropagation(); dateInputRef.current?.showPicker?.(); }}
                 />
               </div>
-            </>
+            </div>
+          ) : (
+            <div style={styles.fieldWrap}>
+              <label style={styles.label}>Monto (€)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.amount}
+                onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                className="input-modern"
+                style={styles.input}
+                required
+              />
+            </div>
           )}
+          <div style={styles.fieldWrap}>
+            <label style={styles.label}>Cuenta</label>
+            <select
+              value={form.accountId}
+              onChange={(e) => setForm((f) => ({ ...f, accountId: e.target.value }))}
+              className="select-modern"
+              style={styles.input}
+              required
+            >
+              {accountsSorted.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {primaryAccountId === a.id ? '⭐ ' : ''}{a.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {(kind === 'fixed' || editingFixed) && (
             <>
-              <label style={styles.label}>Día del mes (1-31)</label>
-              <input
-                type="number"
-                min={1}
-                max={31}
-                value={form.dayOfMonth}
-                onChange={(e) => setForm((f) => ({ ...f, dayOfMonth: e.target.value }))}
-                style={styles.input}
-              />
-              <p style={styles.hint}>El job del backend aplicará este movimiento ese día cada mes. También puedes usar "Aplicar ahora" en la pestaña Fijos.</p>
+              <div style={styles.fieldWrap}>
+                <label style={styles.label}>Día del mes (1-31)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={form.dayOfMonth}
+                  onChange={(e) => setForm((f) => ({ ...f, dayOfMonth: e.target.value }))}
+                  className="input-modern"
+                  style={styles.input}
+                />
+              </div>
+              <p style={styles.hint}>El job del backend aplicará este movimiento ese día cada mes. También puedes usar &quot;Aplicar ahora&quot; en la pestaña Fijos.</p>
             </>
           )}
 
           {(kind === 'quick' || editingQuick) && (
             <>
-              <label style={styles.label}>Icono</label>
-              <div style={styles.iconRow}>
-                {QUICK_ICONS.map((ico) => (
-                  <button
-                    key={ico}
-                    type="button"
-                    onClick={() => setForm((f) => ({ ...f, icon: ico }))}
-                    style={{ ...styles.iconBtn, ...(form.icon === ico ? styles.iconBtnActive : {}) }}
-                  >
-                    {ico}
-                  </button>
-                ))}
+              <div style={styles.fieldWrap}>
+                <label style={styles.label}>Icono</label>
+                <IconPicker
+                  icons={icons}
+                  value={form.icon}
+                  onChange={(symbol) => setForm((f) => ({ ...f, icon: symbol }))}
+                  placeholder="Elegir icono"
+                  style={{ marginBottom: 0 }}
+                />
               </div>
               <label style={styles.checkboxRow}>
                 <input
@@ -293,7 +345,7 @@ export default function TransactionForm({
                 <span>Mostrar en movimientos (aparece el nombre y al hacer clic se agrega)</span>
               </label>
               {kind === 'quick' && !editingQuick && (
-                <p style={styles.hint}>Se guardará como plantilla. Si marcas "Mostrar en movimientos", aparecerá en la barra de Movimientos y al hacer clic se añadirá.</p>
+                <p style={styles.hint}>Se guardará como plantilla. Si marcas &quot;Mostrar en movimientos&quot;, aparecerá en la barra de Movimientos y al hacer clic se añadirá.</p>
               )}
             </>
           )}
@@ -324,27 +376,27 @@ const styles = {
   modal: {
     background: 'var(--surface)',
     border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)',
-    maxWidth: 400,
+    borderRadius: 'var(--radius-card)',
+    maxWidth: 560,
     width: '100%',
     maxHeight: '90vh',
     overflow: 'auto',
+    boxShadow: '0 24px 48px rgba(0,0,0,0.3)',
   },
-  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderBottom: '1px solid var(--border)' },
-  modalTitle: { margin: 0, fontSize: '1.1rem' },
-  closeBtn: { background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem', padding: '0.25rem', cursor: 'pointer' },
-  form: { padding: '1rem' },
-  label: { display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem' },
-  dateRow: { marginBottom: '0.75rem', cursor: 'pointer' },
-  input: { width: '100%', padding: '0.6rem', marginBottom: '0.75rem', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)' },
-  hint: { fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' },
-  iconRow: { display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.75rem' },
-  iconBtn: { padding: '0.35rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', fontSize: '1rem', cursor: 'pointer' },
-  iconBtnActive: { border: '1px solid var(--accent)', background: 'var(--surface-hover)' },
-  checkboxRow: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', cursor: 'pointer', fontSize: '0.9rem' },
-  checkbox: { width: 18, height: 18, accentColor: 'var(--accent)' },
-  actions: { display: 'flex', gap: '0.5rem', marginTop: '0.5rem' },
-  btnExpense: { padding: '0.5rem 1rem', background: 'var(--expense)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', fontWeight: 500 },
-  btnIncome: { padding: '0.5rem 1rem', background: 'var(--income)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', fontWeight: 500 },
-  btnSecondary: { padding: '0.5rem 1rem', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' },
+  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' },
+  modalTitle: { margin: 0, fontSize: '1.1rem', fontWeight: 600 },
+  closeBtn: { background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem', padding: '0.2rem', cursor: 'pointer', borderRadius: 8, minHeight: 0, minWidth: 0 },
+  form: { padding: '1.25rem' },
+  formRowTwo: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' },
+  fieldWrap: { marginBottom: '0.75rem' },
+  dateFieldWrap: { marginBottom: '0.75rem', cursor: 'pointer' },
+  label: { display: 'block', fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.03em' },
+  input: { width: '100%', marginBottom: 0 },
+  hint: { fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem', marginTop: '-0.2rem' },
+  checkboxRow: { display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' },
+  checkbox: { width: 16, height: 16, accentColor: 'var(--accent)' },
+  actions: { display: 'flex', gap: '0.5rem', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' },
+  btnExpense: { padding: '0.5rem 1rem', background: 'var(--expense)', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: '0.9rem', minHeight: 0 },
+  btnIncome: { padding: '0.5rem 1rem', background: 'var(--income)', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: '0.9rem', minHeight: 0 },
+  btnSecondary: { padding: '0.5rem 1rem', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 10, fontWeight: 500, fontSize: '0.9rem', minHeight: 0 },
 };

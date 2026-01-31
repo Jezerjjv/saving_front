@@ -34,8 +34,14 @@ export function AppSettingsProvider({ children }) {
   const primaryAccountId = settings.primaryAccountId != null ? Number(settings.primaryAccountId) : null;
   const setPrimaryAccountId = (id) => updateSettings({ primaryAccountId: id == null ? null : Number(id) });
 
+  const appCurrency = settings.appCurrency === 'USD' ? 'USD' : 'EUR';
+  const setAppCurrency = (value) => updateSettings({ appCurrency: value === 'USD' ? 'USD' : 'EUR' });
+
+  const exchangeRateUsdToEur = settings.exchangeRateUsdToEur != null ? Number(settings.exchangeRateUsdToEur) : 0.92;
+  const setExchangeRateUsdToEur = (value) => updateSettings({ exchangeRateUsdToEur: value == null || value === '' ? 0.92 : Number(value) });
+
   return (
-    <AppSettingsContext.Provider value={{ blurBalance, setBlurBalance, primaryAccountId, setPrimaryAccountId, settings, updateSettings, loaded }}>
+    <AppSettingsContext.Provider value={{ blurBalance, setBlurBalance, primaryAccountId, setPrimaryAccountId, appCurrency, setAppCurrency, exchangeRateUsdToEur, setExchangeRateUsdToEur, settings, updateSettings, loaded }}>
       {children}
     </AppSettingsContext.Provider>
   );
