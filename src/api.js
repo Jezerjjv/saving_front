@@ -12,12 +12,22 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  productTypes: {
+    list: () => request('/product-types'),
+    get: (id) => request(`/product-types/${id}`),
+  },
   accounts: {
     list: () => request('/accounts'),
     get: (id) => request(`/accounts/${id}`),
     create: (body) => request('/accounts', { method: 'POST', body: JSON.stringify(body) }),
     update: (id, body) => request(`/accounts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     delete: (id) => request(`/accounts/${id}`, { method: 'DELETE' }),
+    products: {
+      list: (accountId) => request(`/accounts/${accountId}/products`),
+      create: (accountId, body) => request(`/accounts/${accountId}/products`, { method: 'POST', body: JSON.stringify(body) }),
+      update: (accountId, productId, body) => request(`/accounts/${accountId}/products/${productId}`, { method: 'PUT', body: JSON.stringify(body) }),
+      delete: (accountId, productId) => request(`/accounts/${accountId}/products/${productId}`, { method: 'DELETE' }),
+    },
   },
   categories: {
     list: () => request('/categories'),
