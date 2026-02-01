@@ -183,7 +183,7 @@ export default function Layout() {
                     type="button"
                     className="sidebar-btn-disconnect"
                     onClick={() => {
-                      if (pinEnabled || hasBiometricCredential()) {
+                      if (pinEnabled || hasBiometricCredential(user?.id)) {
                         lock();
                         onNavClick();
                       } else {
@@ -455,7 +455,7 @@ export default function Layout() {
                 <p style={profileModalStyles.hint}>Permite desbloquear con huella o reconocimiento facial. Puedes usar solo biometría, solo PIN, o ambos.</p>
                 {isWebAuthnAvailable() ? (
                   <div style={{ marginTop: '0.5rem' }}>
-                    {hasBiometricCredential() ? (
+                    {hasBiometricCredential(user?.id) ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                         <span style={profileModalStyles.hint}>Biometría activa.</span>
                         <button
@@ -466,7 +466,7 @@ export default function Layout() {
                               title: 'Quitar biometría',
                               message: '¿Quitar la biometría?',
                               onConfirm: () => {
-                                clearBiometricCredential();
+                                clearBiometricCredential(user?.id);
                                 unlock();
                                 showMessage('Biometría desactivada.', 'success');
                               },
@@ -527,7 +527,7 @@ export default function Layout() {
                   return;
                 }
                 try {
-                  await setPin(pin);
+                  await setPin(pin, user);
                   showMessage('PIN activado. La app se bloqueará al salir o al volver a abrirla.', 'success');
                   setPinModalOpen(false);
                   setPinForm({ pin: '', confirm: '' });

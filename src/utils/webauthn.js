@@ -1,9 +1,25 @@
 /**
  * WebAuthn para desbloqueo biométrico (solo cliente).
  * La credencial se registra en el dispositivo; no se verifica en servidor.
+ * Las credenciales se almacenan por userId para que cada cuenta tenga la suya.
  */
 
-const BIO_CREDENTIAL_ID_KEY = 'saving_bio_credential_id';
+const BIO_CREDENTIAL_ID_PREFIX = 'saving_bio_credential_id_';
+const BIO_CREDENTIAL_ID_KEY_LEGACY = 'saving_bio_credential_id';
+
+function credentialKey(userId) {
+  return userId ? `${BIO_CREDENTIAL_ID_PREFIX}${userId}` : null;
+}
+
+/** Migra la credencial antigua (global) al formato por usuario, si existe. */
+function migrateLegacyCredential(userId) {
+  if (!userId) return;
+  const legacy = localStorage.getItem(BIO_CREDENTIAL_ID_KEY_LEGACY);
+  if (legacy && !localStorage.getItem(credentialKey(userId))) {
+    localStorage.setItem(credentialKey(userId), legacy);
+    localStorage.removeItem(BIO_CREDENTIAL_ID_KEY_LEGACY);
+  }
+}
 
 function randomChallenge() {
   return crypto.getRandomValues(new Uint8Array(32));
@@ -29,8 +45,14 @@ export function isWebAuthnAvailable() {
   return typeof window !== 'undefined' && window.PublicKeyCredential != null;
 }
 
-export function hasBiometricCredential() {
-  return !!localStorage.getItem(BIO_CREDENTIAL_ID_KEY);
+/**
+ * Indica si el usuario tiene credencial biométrica registrada.
+ * @param {string|number|null|undefined} userId - ID del usuario (obligatorio para multi-usuario)
+ */
+export function hasBiometricCredential(userId) {
+  if (userId == null || userId === '') return false;
+  migrateLegacyCredential(userId);
+  return !!localStorage.getItem(credentialKey(userId));
 }
 
 /**
@@ -62,7 +84,7 @@ export async function registerBiometric(user) {
     const cred = await navigator.credentials.create({ publicKey });
     if (!cred || !cred.rawId) return false;
     const id = base64urlEncode(cred.rawId);
-    localStorage.setItem(BIO_CREDENTIAL_ID_KEY, id);
+    localStorage.setItem(credentialKey(userId), id);
     return true;
   } catch {
     return false;
@@ -71,11 +93,14 @@ export async function registerBiometric(user) {
 
 /**
  * Autentica con biometría (huella/face). No verifica en servidor.
+ * @param {string|number|null|undefined} userId - ID del usuario cuya credencial usar
  * @returns {Promise<boolean>} true si el usuario superó la verificación biométrica
  */
-export async function authenticateBiometric() {
+export async function authenticateBiometric(userId) {
   if (!isWebAuthnAvailable()) return false;
-  const idStr = localStorage.getItem(BIO_CREDENTIAL_ID_KEY);
+  if (userId == null || userId === '') return false;
+  migrateLegacyCredential(userId);
+  const idStr = localStorage.getItem(credentialKey(userId));
   if (!idStr) return false;
   const credentialId = base64urlDecode(idStr);
   const challenge = randomChallenge();
@@ -93,6 +118,10 @@ export async function authenticateBiometric() {
   }
 }
 
-export function clearBiometricCredential() {
-  localStorage.removeItem(BIO_CREDENTIAL_ID_KEY);
+/**
+ * Elimina la credencial biométrica del usuario.
+ * @param {string|number|null|undefined} userId - ID del usuario
+ */
+export function clearBiometricCredential(userId) {
+  if (userId != null && userId !== '') localStorage.removeItem(credentialKey(userId));
 }

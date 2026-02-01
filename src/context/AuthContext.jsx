@@ -7,6 +7,7 @@ const AuthContext = createContext(null);
 
 const TOKEN_KEY = 'saving_token';
 const USER_KEY = 'saving_user';
+const USER_ID_PIN_KEY = 'saving_user_id';
 const PIN_ENABLED_KEY = 'saving_pin_enabled';
 const PIN_HASH_KEY = 'saving_pin_hash';
 const ENCRYPTED_TOKEN_KEY = 'saving_encrypted_token';
@@ -29,11 +30,17 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
-  // Bloqueado si hay token y (PIN activado O biometría registrada) hasta que el usuario desbloquee
+  // Bloqueado si hay token y (PIN activado O biometría del usuario actual) hasta que el usuario desbloquee
   const [unlocked, setUnlocked] = useState(() => {
     const t = localStorage.getItem(TOKEN_KEY);
     if (!t) return true;
-    return !(getPinEnabled() || hasBiometricCredential());
+    try {
+      const u = localStorage.getItem(USER_KEY);
+      const currentUser = u ? JSON.parse(u) : null;
+      return !(getPinEnabled() || hasBiometricCredential(currentUser?.id));
+    } catch {
+      return !(getPinEnabled() || hasBiometricCredential(null));
+    }
   });
   const [pinEnabled, setPinEnabledState] = useState(getPinEnabled);
 
@@ -46,7 +53,7 @@ export function AuthProvider({ children }) {
       }
       setTokenState(newToken);
       setPinEnabledState(getPinEnabled());
-      setUnlocked(!(getPinEnabled() || hasBiometricCredential()));
+      setUnlocked(!(getPinEnabled() || hasBiometricCredential(newUser?.id)));
     } else {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
@@ -69,10 +76,11 @@ export function AuthProvider({ children }) {
   };
 
   /** Activa el bloqueo con PIN guardando el hash del PIN y el token cifrado (para login con PIN). */
-  const setPin = useCallback(async (pin) => {
+  const setPin = useCallback(async (pin, currentUser) => {
     const h = await hashPin(pin);
     localStorage.setItem(PIN_HASH_KEY, h);
     localStorage.setItem(PIN_ENABLED_KEY, 'true');
+    if (currentUser?.id != null) localStorage.setItem(USER_ID_PIN_KEY, String(currentUser.id));
     setPinEnabledState(true);
     setUnlocked(true);
     const currentToken = localStorage.getItem(TOKEN_KEY);
@@ -82,13 +90,15 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  /** Desactiva el bloqueo con PIN. Si solo queda biometría, la app sigue bloqueada hasta biometría. */
+  /** Desactiva el bloqueo con PIN. Si solo queda biometría del usuario actual, la app sigue bloqueada hasta biometría. */
   const clearPin = useCallback(() => {
+    const storedUserId = localStorage.getItem(USER_ID_PIN_KEY);
     localStorage.removeItem(PIN_HASH_KEY);
     localStorage.removeItem(PIN_ENABLED_KEY);
     localStorage.removeItem(ENCRYPTED_TOKEN_KEY);
+    localStorage.removeItem(USER_ID_PIN_KEY);
     setPinEnabledState(false);
-    setUnlocked(!hasBiometricCredential());
+    setUnlocked(!hasBiometricCredential(storedUserId));
   }, []);
 
   /** Comprueba si el PIN es correcto; devuelve Promise<boolean>. */
@@ -136,6 +146,9 @@ export function AuthProvider({ children }) {
     localStorage.getItem(ENCRYPTED_TOKEN_KEY)
   );
 
+  /** userId asociado al PIN guardado (para saber qué biometría mostrar en login). */
+  const getStoredUserIdForPin = useCallback(() => localStorage.getItem(USER_ID_PIN_KEY) || null, []);
+
   const value = {
     token,
     user,
@@ -153,6 +166,7 @@ export function AuthProvider({ children }) {
     loginWithPin,
     canLoginWithPin,
     refreshEncryptedToken,
+    getStoredUserIdForPin,
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

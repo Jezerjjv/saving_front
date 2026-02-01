@@ -7,7 +7,7 @@ import { isWebAuthnAvailable, hasBiometricCredential, authenticateBiometric } fr
 const BASE = import.meta.env.VITE_API_URL || '/api';
 
 export default function Login() {
-  const { login, loginWithPin, canLoginWithPin } = useAuth();
+  const { login, loginWithPin, canLoginWithPin, getStoredUserIdForPin } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,7 +15,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [pendingBioUnlock, setPendingBioUnlock] = useState(false);
-  const bioAvailable = isWebAuthnAvailable() && hasBiometricCredential();
+  const bioAvailable = isWebAuthnAvailable() && hasBiometricCredential(getStoredUserIdForPin?.() ?? null);
   // Solo con PIN se puede "entrar sin email/contraseña" (token cifrado). Con solo bio, Desconectar = bloquear, no login.
   const [useEmailForm, setUseEmailForm] = useState(() => !canLoginWithPin);
   const showPinOrBio = !useEmailForm && canLoginWithPin;
@@ -68,7 +68,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const ok = await authenticateBiometric();
+      const ok = await authenticateBiometric(getStoredUserIdForPin?.() ?? null);
       if (ok) {
         setPendingBioUnlock(true);
         setUseEmailForm(false);

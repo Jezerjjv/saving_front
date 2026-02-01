@@ -10,7 +10,7 @@ export default function LockScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const bioAvailable = isWebAuthnAvailable();
-  const bioRegistered = hasBiometricCredential();
+  const bioRegistered = hasBiometricCredential(user?.id);
   const onlyBiometric = !pinEnabled && bioRegistered;
 
   const handleUnlock = async (e) => {
@@ -46,7 +46,7 @@ export default function LockScreen() {
     }
     setLoading(true);
     try {
-      const ok = await authenticateBiometric();
+      const ok = await authenticateBiometric(user?.id);
       if (ok) unlock();
       else setError('No se pudo verificar la biometría');
     } catch {
