@@ -110,4 +110,38 @@ export const api = {
       return request('/interest-history' + (q.toString() ? '?' + q.toString() : ''));
     },
   },
+  crypto: {
+    holdings: {
+      list: () => request('/crypto/holdings'),
+      get: (id) => request(`/crypto/holdings/${id}`),
+      create: (body) => request('/crypto/holdings', { method: 'POST', body: JSON.stringify(body) }),
+      update: (id, body) => request(`/crypto/holdings/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+      delete: (id) => request(`/crypto/holdings/${id}`, { method: 'DELETE' }),
+      dailyHistory: (id, year, month) => {
+        const q = new URLSearchParams();
+        if (year != null) q.set('year', String(year));
+        if (month != null) q.set('month', String(month));
+        return request(`/crypto/holdings/${id}/daily-history` + (q.toString() ? '?' + q.toString() : ''));
+      },
+    },
+    prices: (symbols) => request('/crypto/prices?symbols=' + (Array.isArray(symbols) ? symbols.join(',') : encodeURIComponent(String(symbols || '')))),
+    dailyClose: (year, month) => {
+      const q = new URLSearchParams();
+      if (year != null) q.set('year', String(year));
+      if (month != null) q.set('month', String(month));
+      return request('/crypto/daily-close' + (q.toString() ? '?' + q.toString() : ''));
+    },
+    eligible: () => request('/crypto/eligible'),
+  },
+  stocks: {
+    holdings: {
+      list: () => request('/stocks/holdings'),
+      get: (id) => request(`/stocks/holdings/${id}`),
+      create: (body) => request('/stocks/holdings', { method: 'POST', body: JSON.stringify(body) }),
+      update: (id, body) => request(`/stocks/holdings/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+      delete: (id) => request(`/stocks/holdings/${id}`, { method: 'DELETE' }),
+    },
+    prices: (symbols) => request('/stocks/prices?symbols=' + (Array.isArray(symbols) ? symbols.join(',') : encodeURIComponent(String(symbols || '')))),
+    eligible: () => request('/stocks/eligible'),
+  },
 };

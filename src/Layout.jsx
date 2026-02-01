@@ -12,6 +12,8 @@ import {
   IconChevronDown,
   IconChevronUp,
   IconPercent,
+  IconCrypto,
+  IconStocks,
 } from './components/Icons.jsx';
 import { useMovimientosSidebar } from './context/MovimientosSidebarContext';
 import { useLayoutHeaderContent } from './context/LayoutHeaderContext';
@@ -21,6 +23,8 @@ const navBase = [
   { to: '/calendario', label: 'Calendario', Icon: IconCalendar },
   { to: '/cuentas', label: 'Cuentas', Icon: IconCreditCard },
   { to: '/transferencias', label: 'Transferencias', Icon: IconArrowLeftRight },
+  { to: '/criptomonedas', label: 'Criptomonedas', Icon: IconCrypto },
+  { to: '/acciones', label: 'Acciones', Icon: IconStocks },
   { to: '/configuracion', label: 'Config', Icon: IconSettings },
 ];
 
@@ -34,6 +38,8 @@ const DEFS_LABEL = 'Rápidos y Fijos';
 function isActive(path, location) {
   if (path === '/movimientos') return location.pathname === '/movimientos' || location.pathname === '/rapidos-y-fijos';
   if (path === '/intereses') return location.pathname === '/intereses';
+  if (path === '/criptomonedas') return location.pathname === '/criptomonedas';
+  if (path === '/acciones') return location.pathname === '/acciones';
   return location.pathname.startsWith(path);
 }
 

@@ -5,6 +5,8 @@ import Accounts from './pages/Accounts';
 import Transactions from './pages/Transactions';
 import RapidosYFijos from './pages/RapidosYFijos';
 import Transfers from './pages/Transfers';
+import Cryptos from './pages/Cryptos';
+import Acciones from './pages/Acciones';
 import Intereses from './pages/Intereses';
 import Settings from './pages/Settings';
 import { MovimientosSidebarProvider } from './context/MovimientosSidebarContext';
@@ -22,6 +24,8 @@ export default function App() {
         <Route path="/movimientos" element={<Transactions />} />
         <Route path="/rapidos-y-fijos" element={<RapidosYFijos />} />
         <Route path="/transferencias" element={<Transfers />} />
+        <Route path="/criptomonedas" element={<Cryptos />} />
+        <Route path="/acciones" element={<Acciones />} />
         <Route path="/intereses" element={<Intereses />} />
         <Route path="/configuracion" element={<Settings />} />
         </Routes>

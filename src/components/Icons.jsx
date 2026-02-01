@@ -129,6 +129,39 @@ export function IconPercent({ size = navSize, style, ...rest }) {
   );
 }
 
+/** Icono historial / línea temporal (para historial diario por crypto). */
+export function IconHistory({ size = defaultSize, style, ...rest }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, ...style }} {...rest}>
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+
+/** Icono acciones / bolsa (gráfica al alza). */
+export function IconStocks({ size = navSize, style, ...rest }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, ...style }} {...rest}>
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+      <polyline points="16 7 22 7 22 13" />
+    </svg>
+  );
+}
+
+/** Icono criptomonedas */
+export function IconCrypto({ size = navSize, style, ...rest }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, ...style }} {...rest}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 6v3l2-1.5" />
+      <path d="M12 15v3l3-2.5" />
+      <path d="M12 9l-2 1.5 2 1.5 2-1.5" />
+      <path d="M10 13.5L12 15l2-1.5" />
+    </svg>
+  );
+}
+
 /** Estrella (cuenta principal). filled = true para rellena. */
 export function IconStar({ size = defaultSize, filled = false, style, ...rest }) {
   return (
