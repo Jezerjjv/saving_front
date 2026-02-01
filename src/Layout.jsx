@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { useMessage } from './context/MessageContext';
 import { api } from './api';
@@ -17,6 +17,7 @@ import {
   IconCrypto,
   IconStocks,
   IconLogout,
+  IconCamera,
 } from './components/Icons.jsx';
 import { useMovimientosSidebar } from './context/MovimientosSidebarContext';
 import { useLayoutHeaderContent } from './context/LayoutHeaderContext';
@@ -79,6 +80,7 @@ const GEAR_MODAL_TABS = [
 
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout, updateUser, pinEnabled, setPin, clearPin, unlock, lock } = useAuth();
   const { showMessage, confirm } = useMessage();
   const { actionsRef, sidebarState } = useMovimientosSidebar();
@@ -255,6 +257,21 @@ export default function Layout() {
                             Ingreso
                           </button>
                         </div>
+                        {actions.openCapture && (
+                          <button
+                            type="button"
+                            className="sidebar-btn sidebar-btn-capture"
+                            onClick={() => {
+                              if (location.pathname !== '/movimientos') navigate('/movimientos');
+                              setTimeout(() => actions.openCapture?.(), 100);
+                              onNavClick();
+                            }}
+                            title="Capturar factura o ticket"
+                          >
+                            <IconCamera size={18} />
+                            Capturar factura
+                          </button>
+                        )}
                         {MAIN_TABS.map((tab) => (
                           <button
                             key={tab.id}

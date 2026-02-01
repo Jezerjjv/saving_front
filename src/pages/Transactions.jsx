@@ -7,6 +7,7 @@ import { useMovimientosSidebar } from '../context/MovimientosSidebarContext';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
 import TransactionAccordion from '../components/TransactionAccordion';
 import TransactionForm from '../components/TransactionForm';
+import CaptureExpenseModal from '../components/CaptureExpenseModal';
 import Loader from '../components/Loader';
 import { IconEdit, IconTrash, IconApply, IconChevronDown, IconChevronUp, IconChevronRight } from '../components/Icons.jsx';
 
@@ -59,6 +60,8 @@ export default function Transactions() {
   const [searchCategoryId, setSearchCategoryId] = useState('');
   const dayNumFromUrl = dayParam != null && dayParam !== '' ? Number(dayParam) : NaN;
   const [searchDay, setSearchDay] = useState((dayNumFromUrl >= 1 && dayNumFromUrl <= 31) ? String(dayNumFromUrl) : '');
+  const [showCaptureModal, setShowCaptureModal] = useState(false);
+  const [initialDataFromCapture, setInitialDataFromCapture] = useState(null);
 
   const setMonth = (m) => {
     const val = Math.min(12, Math.max(1, m));
@@ -131,19 +134,31 @@ export default function Transactions() {
     }
   };
 
-  const openAdd = (type, kind = 'normal') => {
+  const openAdd = (type, kind = 'normal', initialData = null) => {
     setFormType(type);
     setFormDefaultKind(kind);
     setEditingTx(null);
     setEditingFixed(null);
     setEditingQuick(null);
+    setInitialDataFromCapture(initialData);
     setShowForm(true);
+  };
+
+  const openCapture = () => {
+    setShowCaptureModal(true);
+  };
+
+  const handleCaptureExtracted = (data) => {
+    setShowCaptureModal(false);
+    openAdd('expense', 'normal', data);
   };
 
   const openAddRef = useRef(openAdd);
   const setActiveTabRef = useRef(setActiveTab);
+  const openCaptureRef = useRef(openCapture);
   openAddRef.current = openAdd;
   setActiveTabRef.current = setActiveTab;
+  openCaptureRef.current = openCapture;
 
   const sidebarCtxRef = useRef(sidebarContext);
   sidebarCtxRef.current = sidebarContext;
@@ -154,6 +169,7 @@ export default function Transactions() {
     ctx.register({
       openAdd: (...args) => openAddRef.current(...args),
       setActiveTab: (id) => setActiveTabRef.current(id),
+      openCapture: () => openCaptureRef.current(),
     });
     return () => {
       if (sidebarCtxRef.current) sidebarCtxRef.current.unregister();
@@ -195,6 +211,7 @@ export default function Transactions() {
     setEditingTx(null);
     setEditingFixed(null);
     setEditingQuick(null);
+    setInitialDataFromCapture(null);
     load();
   };
 
@@ -551,6 +568,13 @@ export default function Transactions() {
         </div>
       )}
 
+      {showCaptureModal && (
+        <CaptureExpenseModal
+          onExtracted={handleCaptureExtracted}
+          onClose={() => setShowCaptureModal(false)}
+        />
+      )}
+
       {showForm && (
         <TransactionForm
           type={formType}
@@ -560,6 +584,7 @@ export default function Transactions() {
           editingTx={editingTx}
           editingFixed={editingFixed}
           editingQuick={editingQuick}
+          initialData={initialDataFromCapture}
           onClose={onFormClose}
           onSaved={onFormClose}
         />

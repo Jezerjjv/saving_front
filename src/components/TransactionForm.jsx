@@ -18,6 +18,7 @@ export default function TransactionForm({
   editingTx,
   editingFixed,
   editingQuick,
+  initialData,
   onClose,
   onSaved,
 }) {
@@ -90,19 +91,23 @@ export default function TransactionForm({
       const accountId = (primaryAccountId != null && accounts?.find((a) => a.id === primaryAccountId))
         ? primaryAccountId
         : (accounts?.[0]?.id ?? '');
+      const today = new Date().toISOString().slice(0, 10);
+      const suggestedCategoryId = initialData?.categorySuggestion && Array.isArray(categories) && categories.length
+        ? (categories.find((c) => (c.name || '').toLowerCase().includes(initialData.categorySuggestion.toLowerCase()))?.id ?? categories[0]?.id)
+        : null;
       setKind(defaultKind);
       setForm({
-        name: '',
-        categoryId: categories?.[0]?.id ?? '',
-        amount: '',
+        name: initialData?.name ?? '',
+        categoryId: suggestedCategoryId ?? categories?.[0]?.id ?? '',
+        amount: initialData?.amount != null ? String(initialData.amount) : '',
         accountId,
-        date: new Date().toISOString().slice(0, 10),
+        date: initialData?.date ?? today,
         dayOfMonth: '1',
         showInQuick: true,
         icon: '📁',
       });
     }
-  }, [editingTx, editingFixed, editingQuick, defaultKind, categories, accounts, primaryAccountId]);
+  }, [editingTx, editingFixed, editingQuick, defaultKind, categories, accounts, primaryAccountId, initialData]);
 
   useEffect(() => {
     if (kind === 'quick' || editingQuick) {
