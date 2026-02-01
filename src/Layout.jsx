@@ -16,7 +16,6 @@ import {
   IconCrypto,
   IconStocks,
   IconLogout,
-  IconLock,
 } from './components/Icons.jsx';
 import { useMovimientosSidebar } from './context/MovimientosSidebarContext';
 import { useLayoutHeaderContent } from './context/LayoutHeaderContext';
@@ -66,7 +65,7 @@ const profileModalStyles = {
 
 export default function Layout() {
   const location = useLocation();
-  const { user, logout, updateUser, pinEnabled, lock } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { actionsRef, sidebarState } = useMovimientosSidebar();
   const actions = actionsRef?.current;
   const headerTitle = useLayoutHeaderContent();
@@ -159,18 +158,6 @@ export default function Layout() {
                   >
                     <IconSettings size={18} />
                   </button>
-                  {pinEnabled && (
-                    <button
-                      type="button"
-                      className="sidebar-btn-disconnect"
-                      onClick={() => { lock(); onNavClick(); }}
-                      title="Bloquear la app"
-                      aria-label="Bloquear"
-                    >
-                      <IconLock size={18} />
-                      <span>Bloquear</span>
-                    </button>
-                  )}
                   <button
                     type="button"
                     className="sidebar-btn-disconnect"

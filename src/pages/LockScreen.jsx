@@ -5,7 +5,7 @@ import { IconLogo, IconLock, IconFingerprint } from '../components/Icons.jsx';
 import { isWebAuthnAvailable, hasBiometricCredential, authenticateBiometric } from '../utils/webauthn';
 
 export default function LockScreen() {
-  const { user, checkPin, unlock, logout } = useAuth();
+  const { user, checkPin, unlock, logout, refreshEncryptedToken } = useAuth();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,6 +23,7 @@ export default function LockScreen() {
     try {
       const ok = await checkPin(pin.trim());
       if (ok) {
+        await refreshEncryptedToken(pin.trim());
         unlock();
         setPin('');
       } else {
