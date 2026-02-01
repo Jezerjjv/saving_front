@@ -5,12 +5,13 @@ import { IconLogo, IconLock, IconFingerprint } from '../components/Icons.jsx';
 import { isWebAuthnAvailable, hasBiometricCredential, authenticateBiometric } from '../utils/webauthn';
 
 export default function LockScreen() {
-  const { user, checkPin, unlock, logout, refreshEncryptedToken } = useAuth();
+  const { user, pinEnabled, checkPin, unlock, logout, refreshEncryptedToken } = useAuth();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const bioAvailable = isWebAuthnAvailable();
   const bioRegistered = hasBiometricCredential();
+  const onlyBiometric = !pinEnabled && bioRegistered;
 
   const handleUnlock = async (e) => {
     e.preventDefault();
@@ -63,43 +64,65 @@ export default function LockScreen() {
         </div>
         <h1 className="lock-title">Desbloquear Saving</h1>
         <p className="lock-subtitle">
-          {user?.name || user?.email ? `Hola, ${user.name || user.email}` : 'Introduce tu PIN para continuar'}
+          {user?.name || user?.email ? `Hola, ${user.name || user.email}` : onlyBiometric ? 'Usa biometría para continuar' : 'Introduce tu PIN para continuar'}
         </p>
-        <form onSubmit={handleUnlock}>
-          <input
-            type="password"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            autoComplete="off"
-            className="lock-pin-input"
-            placeholder="PIN"
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
-            maxLength={8}
-            disabled={loading}
-            autoFocus
-          />
-          {error && (
-            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: 'var(--danger, #e74c3c)', textAlign: 'center' }}>
-              {error}
-            </p>
-          )}
-          <div className="lock-btn-row">
-            <button type="submit" className="lock-btn-unlock" disabled={loading}>
-              {loading ? 'Comprobando…' : 'Desbloquear'}
-            </button>
-            <button
-              type="button"
-              className="lock-btn-bio"
-              onClick={handleBiometric}
-              disabled={!bioAvailable || !bioRegistered || loading}
-              title={!bioAvailable ? 'Biometría no disponible' : !bioRegistered ? 'Registra biometría en Configuración' : 'Usar biometría'}
-            >
-              <IconFingerprint size={20} />
-              Biometría
-            </button>
-          </div>
-        </form>
+        {onlyBiometric ? (
+          <>
+            {error && (
+              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: 'var(--danger, #e74c3c)', textAlign: 'center' }}>
+                {error}
+              </p>
+            )}
+            <div className="lock-btn-row">
+              <button
+                type="button"
+                className="lock-btn-unlock"
+                onClick={handleBiometric}
+                disabled={loading}
+              >
+                {loading ? 'Comprobando…' : 'Usar biometría'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <form onSubmit={handleUnlock}>
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
+              className="lock-pin-input"
+              placeholder="PIN"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+              maxLength={8}
+              disabled={loading}
+              autoFocus
+            />
+            {error && (
+              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: 'var(--danger, #e74c3c)', textAlign: 'center' }}>
+                {error}
+              </p>
+            )}
+            <div className="lock-btn-row">
+              <button type="submit" className="lock-btn-unlock" disabled={loading}>
+                {loading ? 'Comprobando…' : 'Desbloquear'}
+              </button>
+              {bioRegistered && (
+                <button
+                  type="button"
+                  className="lock-btn-bio"
+                  onClick={handleBiometric}
+                  disabled={!bioAvailable || loading}
+                  title="Usar biometría"
+                >
+                  <IconFingerprint size={20} />
+                  Biometría
+                </button>
+              )}
+            </div>
+          </form>
+        )}
         <p style={{ marginTop: '1.5rem', textAlign: 'center' }}>
           <Link to="/login" onClick={logout} style={{ fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
             <IconLock size={16} />

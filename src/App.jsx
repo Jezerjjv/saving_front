@@ -17,9 +17,9 @@ import { MovimientosSidebarProvider } from './context/MovimientosSidebarContext'
 import { LayoutHeaderProvider } from './context/LayoutHeaderContext';
 
 function ProtectedRoute({ children }) {
-  const { token, pinEnabled, unlocked } = useAuth();
+  const { token, unlocked } = useAuth();
   if (!token) return <Navigate to="/login" replace />;
-  if (pinEnabled && !unlocked) return <LockScreen />;
+  if (!unlocked) return <LockScreen />;
   return children;
 }
 

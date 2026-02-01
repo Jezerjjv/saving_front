@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react';
 import { hashPin, verifyPin, encryptTokenWithPin, decryptTokenWithPin } from '../utils/pin';
+import { hasBiometricCredential } from '../utils/webauthn';
 import { api } from '../api';
 
 const AuthContext = createContext(null);
@@ -28,10 +29,11 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
-  // Si hay PIN activado, la app empieza bloqueada hasta que el usuario introduzca el PIN
+  // Bloqueado si hay token y (PIN activado O biometría registrada) hasta que el usuario desbloquee
   const [unlocked, setUnlocked] = useState(() => {
-    if (!getPinEnabled()) return true;
-    return false;
+    const t = localStorage.getItem(TOKEN_KEY);
+    if (!t) return true;
+    return !(getPinEnabled() || hasBiometricCredential());
   });
   const [pinEnabled, setPinEnabledState] = useState(getPinEnabled);
 
@@ -43,8 +45,8 @@ export function AuthProvider({ children }) {
         setUser(newUser);
       }
       setTokenState(newToken);
-      setUnlocked(!getPinEnabled());
       setPinEnabledState(getPinEnabled());
+      setUnlocked(!(getPinEnabled() || hasBiometricCredential()));
     } else {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
@@ -80,13 +82,13 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  /** Desactiva el bloqueo con PIN. */
+  /** Desactiva el bloqueo con PIN. Si solo queda biometría, la app sigue bloqueada hasta biometría. */
   const clearPin = useCallback(() => {
     localStorage.removeItem(PIN_HASH_KEY);
     localStorage.removeItem(PIN_ENABLED_KEY);
     localStorage.removeItem(ENCRYPTED_TOKEN_KEY);
     setPinEnabledState(false);
-    setUnlocked(true);
+    setUnlocked(!hasBiometricCredential());
   }, []);
 
   /** Comprueba si el PIN es correcto; devuelve Promise<boolean>. */

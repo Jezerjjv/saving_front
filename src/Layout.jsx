@@ -79,7 +79,7 @@ const GEAR_MODAL_TABS = [
 
 export default function Layout() {
   const location = useLocation();
-  const { user, logout, updateUser, pinEnabled, setPin, clearPin } = useAuth();
+  const { user, logout, updateUser, pinEnabled, setPin, clearPin, unlock } = useAuth();
   const { showMessage, confirm } = useMessage();
   const { actionsRef, sidebarState } = useMovimientosSidebar();
   const actions = actionsRef?.current;
@@ -444,8 +444,8 @@ export default function Layout() {
                 </label>
                 <p style={profileModalStyles.hint}>Si está activo, al abrir Saving se pedirá tu PIN antes de ver tus datos.</p>
                 <h4 style={{ ...profileModalStyles.securitySubtitle, marginTop: '1.25rem' }}>Entrada con biometría</h4>
-                <p style={profileModalStyles.hint}>Opcional. Permite desbloquear con huella o reconocimiento facial además del PIN. Si no funciona en tu dispositivo, usa solo el PIN.</p>
-                {pinEnabled && isWebAuthnAvailable() ? (
+                <p style={profileModalStyles.hint}>Permite desbloquear con huella o reconocimiento facial. Puedes usar solo biometría, solo PIN, o ambos.</p>
+                {isWebAuthnAvailable() ? (
                   <div style={{ marginTop: '0.5rem' }}>
                     {hasBiometricCredential() ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -456,9 +456,10 @@ export default function Layout() {
                           onClick={() => {
                             confirm({
                               title: 'Quitar biometría',
-                              message: '¿Quitar la biometría? Solo podrás desbloquear con PIN.',
+                              message: '¿Quitar la biometría?',
                               onConfirm: () => {
                                 clearBiometricCredential();
+                                unlock();
                                 showMessage('Biometría desactivada.', 'success');
                               },
                             });
@@ -489,9 +490,9 @@ export default function Layout() {
                       </button>
                     )}
                   </div>
-                ) : !pinEnabled ? (
-                  <p style={profileModalStyles.hint}>Activa primero el PIN para poder usar biometría como alternativa.</p>
-                ) : null}
+                ) : (
+                  <p style={profileModalStyles.hint}>Biometría no disponible en este navegador.</p>
+                )}
                 <div style={profileModalStyles.actions}>
                   <button type="button" onClick={closeProfileModal} style={profileModalStyles.btnSecondary}>Cerrar</button>
                 </div>
