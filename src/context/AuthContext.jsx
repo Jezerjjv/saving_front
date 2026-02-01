@@ -98,6 +98,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const unlock = useCallback(() => setUnlocked(true), []);
+  const lock = useCallback(() => setUnlocked(false), []);
 
   /** Actualiza el token cifrado con el PIN (para que al desconectar se pueda entrar solo con PIN). */
   const refreshEncryptedToken = useCallback(async (pin) => {
@@ -148,6 +149,7 @@ export function AuthProvider({ children }) {
     clearPin,
     checkPin,
     unlock,
+    lock,
     loginWithPin,
     canLoginWithPin,
     refreshEncryptedToken,

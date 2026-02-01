@@ -79,7 +79,7 @@ const GEAR_MODAL_TABS = [
 
 export default function Layout() {
   const location = useLocation();
-  const { user, logout, updateUser, pinEnabled, setPin, clearPin, unlock } = useAuth();
+  const { user, logout, updateUser, pinEnabled, setPin, clearPin, unlock, lock } = useAuth();
   const { showMessage, confirm } = useMessage();
   const { actionsRef, sidebarState } = useMovimientosSidebar();
   const actions = actionsRef?.current;
@@ -182,9 +182,17 @@ export default function Layout() {
                   <button
                     type="button"
                     className="sidebar-btn-disconnect"
-                    onClick={() => { logout(); onNavClick(); }}
-                    title="Cerrar sesión"
-                    aria-label="Cerrar sesión"
+                    onClick={() => {
+                      if (pinEnabled || hasBiometricCredential()) {
+                        lock();
+                        onNavClick();
+                      } else {
+                        logout();
+                        onNavClick();
+                      }
+                    }}
+                    title={pinEnabled || hasBiometricCredential() ? 'Bloquear (volverás a entrar con PIN o biometría)' : 'Cerrar sesión'}
+                    aria-label="Desconectar"
                   >
                     <IconLogout size={18} />
                     <span>Desconectar</span>

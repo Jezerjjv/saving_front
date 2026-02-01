@@ -124,7 +124,12 @@ export default function LockScreen() {
           </form>
         )}
         <p style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-          <Link to="/login" onClick={logout} style={{ fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+          <Link
+            to="/login"
+            onClick={logout}
+            style={{ fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            title="Cerrar sesión solo en este dispositivo. Tendrás que usar email y contraseña para volver a entrar aquí."
+          >
             <IconLock size={16} />
             Cerrar sesión
           </Link>

@@ -16,10 +16,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [pendingBioUnlock, setPendingBioUnlock] = useState(false);
   const bioAvailable = isWebAuthnAvailable() && hasBiometricCredential();
-  const canUsePinOrBio = canLoginWithPin || bioAvailable;
-  // Si tiene PIN registrado, mostrar primero PIN (no pide email). Biometría es opcional por separado.
+  // Solo con PIN se puede "entrar sin email/contraseña" (token cifrado). Con solo bio, Desconectar = bloquear, no login.
   const [useEmailForm, setUseEmailForm] = useState(() => !canLoginWithPin);
-  const showPinOrBio = !useEmailForm && canUsePinOrBio;
+  const showPinOrBio = !useEmailForm && canLoginWithPin;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -192,7 +191,7 @@ export default function Login() {
                 {loading ? 'Entrando…' : 'Entrar'}
               </button>
             </form>
-            {canUsePinOrBio && (
+            {canLoginWithPin && (
               <p className="auth-footer-inline">
                 <button
                   type="button"
@@ -202,7 +201,7 @@ export default function Login() {
                     setError('');
                   }}
                 >
-                  Entrar con PIN o biometría
+                  Entrar con PIN
                 </button>
               </p>
             )}
