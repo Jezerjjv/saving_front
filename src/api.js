@@ -1,10 +1,23 @@
 const BASE = import.meta.env.VITE_API_URL || '/api';
 
+function getAuthHeaders() {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('saving_token') : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function request(path, options = {}) {
-  const res = await fetch(BASE + path, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  });
+  const authHeaders = getAuthHeaders();
+  const headers = { 'Content-Type': 'application/json', ...authHeaders, ...options.headers };
+  const res = await fetch(BASE + path, { ...options, headers });
+  if (res.status === 401) {
+    // Solo redirigir si habíamos enviado token (sesión expirada). Evita bucle en login.
+    if (authHeaders.Authorization && typeof localStorage !== 'undefined') {
+      localStorage.removeItem('saving_token');
+      localStorage.removeItem('saving_user');
+      window.location.href = '/login';
+    }
+    throw new Error('Sesión expirada');
+  }
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || res.statusText);
@@ -12,6 +25,10 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  auth: {
+    getMe: () => request('/auth/me'),
+    updateProfile: (body) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(body) }),
+  },
   productTypes: {
     list: () => request('/product-types'),
     get: (id) => request(`/product-types/${id}`),

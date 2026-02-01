@@ -1,6 +1,6 @@
 {
-  "name": "Mis Finanzas",
-  "short_name": "Mis Finanzas",
+  "name": "Saving",
+  "short_name": "Saving",
   "description": "Gestión de movimientos, cuentas, transferencias e inversiones",
   "start_url": "/",
   "display": "standalone",

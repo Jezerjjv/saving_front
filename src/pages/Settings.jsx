@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { useMessage } from '../context/MessageContext';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { useAuth } from '../context/AuthContext';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
 import Loader from '../components/Loader';
-import { IconEdit, IconTrash } from '../components/Icons.jsx';
+import { IconEdit, IconTrash, IconLock } from '../components/Icons.jsx';
 import IconPicker from '../components/IconPicker.jsx';
+import { registerBiometric, isWebAuthnAvailable, hasBiometricCredential, clearBiometricCredential } from '../utils/webauthn';
 
 const SETTINGS_TABS = [
   { id: 'config', label: 'Configuración' },
@@ -18,7 +20,11 @@ export default function Settings() {
   useLayoutHeader('Configuración');
   const { showMessage, confirm } = useMessage();
   const { blurBalance, setBlurBalance, appCurrency, setAppCurrency, exchangeRateUsdToEur, setExchangeRateUsdToEur } = useAppSettings();
+  const { user, pinEnabled, setPin, clearPin } = useAuth();
+  const [bioRegistering, setBioRegistering] = useState(false);
   const [settingsTab, setSettingsTab] = useState('config');
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [pinForm, setPinForm] = useState({ pin: '', confirm: '' });
   const [icons, setIcons] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -301,7 +307,128 @@ export default function Settings() {
             </label>
             <p style={styles.hint}>Cuando está activo, los importes de las cuentas se muestran difuminados en Resumen y Cuentas.</p>
           </section>
+          <section style={styles.section}>
+            <h2 style={styles.subtitle}>Seguridad</h2>
+            <label style={styles.toggleRow}>
+              <input
+                type="checkbox"
+                checked={pinEnabled}
+                onChange={async (e) => {
+                  if (e.target.checked) {
+                    setPinModalOpen(true);
+                  } else {
+                    const ok = await confirm('¿Desactivar el bloqueo con PIN? La próxima vez que abras la app no se pedirá PIN.');
+                    if (ok) {
+                      clearBiometricCredential();
+                      clearPin();
+                    }
+                  }
+                }}
+                style={styles.checkbox}
+              />
+              <span>Bloqueo con PIN al abrir la app</span>
+            </label>
+            <p style={styles.hint}>Si está activo, al abrir Saving se pedirá tu PIN (o biometría si está disponible) antes de ver tus datos.</p>
+            {pinEnabled && isWebAuthnAvailable() && (
+              <div style={{ marginTop: '1rem' }}>
+                {hasBiometricCredential() ? (
+                  <p style={styles.hint}>Biometría registrada. Puedes desbloquear con huella o reconocimiento facial en la pantalla de bloqueo.</p>
+                ) : (
+                  <button
+                    type="button"
+                    style={styles.btnSecondary}
+                    disabled={bioRegistering}
+                    onClick={async () => {
+                      setBioRegistering(true);
+                      try {
+                        const ok = await registerBiometric(user || {});
+                        if (ok) showMessage('Biometría registrada. Ya puedes desbloquear con huella o cara.', 'success');
+                        else showMessage('No se pudo registrar la biometría. Comprueba que tu dispositivo lo permita.', 'error');
+                      } catch {
+                        showMessage('Error al registrar biometría.', 'error');
+                      } finally {
+                        setBioRegistering(false);
+                      }
+                    }}
+                  >
+                    {bioRegistering ? 'Registrando…' : 'Registrar biometría para desbloquear'}
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
         </>
+      )}
+
+      {pinModalOpen && (
+        <div style={styles.modalOverlay} onClick={() => setPinModalOpen(false)} role="dialog" aria-modal="true" aria-labelledby="pin-modal-title">
+          <div style={styles.modalBox} onClick={(e) => e.stopPropagation()} className="modal-panel">
+            <h3 id="pin-modal-title" style={styles.modalTitle}>Establecer PIN</h3>
+            <p style={styles.hint}>Elige un PIN numérico de 4 a 8 dígitos. Se usará para desbloquear la app al abrirla.</p>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const { pin, confirm: conf } = pinForm;
+                if (pin.length < 4 || pin.length > 8) {
+                  showMessage('El PIN debe tener entre 4 y 8 dígitos.', 'error');
+                  return;
+                }
+                if (pin !== conf) {
+                  showMessage('Los PIN no coinciden.', 'error');
+                  return;
+                }
+                try {
+                  await setPin(pin);
+                  showMessage('PIN activado. La app se bloqueará al salir o al volver a abrirla.', 'success');
+                  setPinModalOpen(false);
+                  setPinForm({ pin: '', confirm: '' });
+                } catch {
+                  showMessage('Error al guardar el PIN.', 'error');
+                }
+              }}
+            >
+              <div style={styles.modalFormRow}>
+                <div style={styles.modalField}>
+                  <label style={styles.modalLabel}>PIN</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="off"
+                    placeholder="4-8 dígitos"
+                    value={pinForm.pin}
+                    onChange={(e) => setPinForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 8) }))}
+                    className="input-modern lock-pin-input"
+                    style={{ ...styles.modalInput, letterSpacing: '0.35em', textAlign: 'center' }}
+                    required
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div style={styles.modalFormRow}>
+                <div style={styles.modalField}>
+                  <label style={styles.modalLabel}>Repetir PIN</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="off"
+                    placeholder="Repite el PIN"
+                    value={pinForm.confirm}
+                    onChange={(e) => setPinForm((f) => ({ ...f, confirm: e.target.value.replace(/\D/g, '').slice(0, 8) }))}
+                    className="input-modern lock-pin-input"
+                    style={{ ...styles.modalInput, letterSpacing: '0.35em', textAlign: 'center' }}
+                    required
+                  />
+                </div>
+              </div>
+              <div style={styles.modalActions}>
+                <button type="submit" style={styles.btnPrimary}>Activar PIN</button>
+                <button type="button" onClick={() => { setPinModalOpen(false); setPinForm({ pin: '', confirm: '' }); }} style={styles.btnSecondary}>Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {settingsTab === 'products' && (

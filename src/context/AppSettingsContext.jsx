@@ -8,6 +8,12 @@ export function AppSettingsProvider({ children }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('saving_token') : null;
+    if (!token) {
+      setSettings({});
+      setLoaded(true);
+      return;
+    }
     api.settings
       .get()
       .then((data) => {

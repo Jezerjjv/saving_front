@@ -202,3 +202,42 @@ export function IconLogo({ size = 36, style, ...rest }) {
     </svg>
   );
 }
+
+/** Desconectar / cerrar sesión. */
+export function IconLogout({ size = defaultSize, style, ...rest }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, ...style }} {...rest}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
+/** Candado (bloqueo / PIN). */
+export function IconLock({ size = defaultSize, style, ...rest }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, ...style }} {...rest}>
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+/** Huella / biometría. */
+export function IconFingerprint({ size = defaultSize, style, ...rest }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, ...style }} {...rest}>
+      <path d="M12 11c0 2.21-1.79 4-4 4s-4-1.79-4-4 1.79-4 4-4 4 1.79 4 4z" />
+      <path d="M12 11v2" />
+      <path d="M12 15v2" />
+      <path d="M12 19v2" />
+      <path d="M8 19v-1" />
+      <path d="M16 19v-1" />
+      <path d="M6 15v-1" />
+      <path d="M18 15v-1" />
+      <path d="M6 11c0-1.1.9-2 2-2" />
+      <path d="M16 11c0-1.1.9-2 2-2" />
+    </svg>
+  );
+}

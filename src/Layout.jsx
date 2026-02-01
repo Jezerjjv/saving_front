@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, Outlet } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 import { api } from './api';
 import {
   IconCalendar,
@@ -14,6 +15,8 @@ import {
   IconPercent,
   IconCrypto,
   IconStocks,
+  IconLogout,
+  IconLock,
 } from './components/Icons.jsx';
 import { useMovimientosSidebar } from './context/MovimientosSidebarContext';
 import { useLayoutHeaderContent } from './context/LayoutHeaderContext';
@@ -48,13 +51,33 @@ function isActive(path, location, item) {
   return location.pathname.startsWith(path);
 }
 
-export default function Layout({ children }) {
+const profileModalStyles = {
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem' },
+  box: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', padding: '1.25rem', maxWidth: 400, width: '100%', boxShadow: '0 24px 48px rgba(0,0,0,0.3)' },
+  title: { margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 600 },
+  field: { marginBottom: '0.75rem' },
+  label: { display: 'block', fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' },
+  input: { width: '100%', padding: '0.5rem 0.65rem', fontSize: '1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
+  actions: { display: 'flex', gap: '0.5rem', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)', flexWrap: 'wrap' },
+  btnPrimary: { padding: '0.5rem 1rem', fontSize: '0.9rem', borderRadius: 'var(--radius)', border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 500 },
+  btnSecondary: { padding: '0.5rem 1rem', fontSize: '0.9rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: 'pointer' },
+  error: { fontSize: '0.85rem', color: 'var(--expense)', marginBottom: '0.5rem' },
+};
+
+export default function Layout() {
   const location = useLocation();
+  const { user, logout, updateUser, pinEnabled, lock } = useAuth();
   const { actionsRef, sidebarState } = useMovimientosSidebar();
   const actions = actionsRef?.current;
   const headerTitle = useLayoutHeaderContent();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [interestEligible, setInterestEligible] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profilePassword, setProfilePassword] = useState('');
+  const [profilePasswordConfirm, setProfilePasswordConfirm] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
 
   useEffect(() => {
     api.interestHistory.get().then((data) => setInterestEligible(data?.eligible ?? false)).catch(() => setInterestEligible(false));
@@ -70,6 +93,38 @@ export default function Layout({ children }) {
   );
 
   const onNavClick = () => setSidebarOpen(false);
+
+  const closeProfileModal = () => {
+    setProfileModalOpen(false);
+    setProfileError('');
+  };
+
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    setProfileError('');
+    const newPassword = profilePassword.trim();
+    const confirm = profilePasswordConfirm.trim();
+    if (newPassword && newPassword.length < 6) {
+      setProfileError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    if (newPassword && newPassword !== confirm) {
+      setProfileError('Las contraseñas no coinciden');
+      return;
+    }
+    setProfileSaving(true);
+    try {
+      const body = { name: profileName.trim() };
+      if (newPassword) body.password = newPassword;
+      const updated = await api.auth.updateProfile(body);
+      updateUser(updated);
+      closeProfileModal();
+    } catch (err) {
+      setProfileError(err.message || 'Error al guardar');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   const isMovimientos = location.pathname === '/movimientos';
   const isMovimientosSection = location.pathname === '/movimientos' || location.pathname === '/rapidos-y-fijos';
@@ -89,10 +144,50 @@ export default function Layout({ children }) {
       <aside className={`layout-sidebar ${sidebarOpen ? 'is-open' : ''}`}>
         <div className="sidebar-inner">
           <div className="sidebar-header">
-            <Link to="/" className="sidebar-logo" onClick={onNavClick} aria-label="Mis Finanzas">
-            <IconLogo size={32} style={{ color: 'var(--accent)' }} />
-              <span className="sidebar-logo-text">Mis Finanzas</span>
-            </Link>
+            <div className="sidebar-header-left">
+              {user && (
+                <div className="sidebar-user-block">
+                  <span className="sidebar-user-name" title={user.email}>
+                    {user.name?.trim() || user.email}
+                  </span>
+                  <button
+                    type="button"
+                    className="sidebar-btn-profile"
+                    onClick={() => { setProfileName(user.name || ''); setProfilePassword(''); setProfilePasswordConfirm(''); setProfileError(''); setProfileModalOpen(true); }}
+                    title="Editar perfil (nombre y contraseña)"
+                    aria-label="Editar perfil"
+                  >
+                    <IconSettings size={18} />
+                  </button>
+                  {pinEnabled && (
+                    <button
+                      type="button"
+                      className="sidebar-btn-disconnect"
+                      onClick={() => { lock(); onNavClick(); }}
+                      title="Bloquear la app"
+                      aria-label="Bloquear"
+                    >
+                      <IconLock size={18} />
+                      <span>Bloquear</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="sidebar-btn-disconnect"
+                    onClick={() => { logout(); onNavClick(); }}
+                    title="Cerrar sesión"
+                    aria-label="Cerrar sesión"
+                  >
+                    <IconLogout size={18} />
+                    <span>Desconectar</span>
+                  </button>
+                </div>
+              )}
+              <Link to="/movimientos" className="sidebar-logo" onClick={onNavClick} aria-label="Saving">
+                <IconLogo size={32} style={{ color: 'var(--accent)' }} />
+                <span className="sidebar-logo-text">Saving</span>
+              </Link>
+            </div>
             <button
               type="button"
               className="sidebar-close"
@@ -232,12 +327,77 @@ export default function Layout({ children }) {
           {headerTitle ? <h1 className="layout-header-title">{headerTitle}</h1> : null}
         </header>
         <div className="layout-content">
-          {children}
+          <Outlet />
         </div>
         <footer className="layout-footer">
           © <span className="layout-footer-year">{new Date().getFullYear()}</span> jezer-saving
         </footer>
       </main>
+
+      {profileModalOpen && (
+        <div style={profileModalStyles.overlay} onClick={closeProfileModal} role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
+          <div style={profileModalStyles.box} onClick={(e) => e.stopPropagation()} className="modal-panel">
+            <h3 id="profile-modal-title" style={profileModalStyles.title}>Editar perfil</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 1rem 0' }}>Cambiar nombre o contraseña. El correo no se puede modificar.</p>
+            <form onSubmit={handleProfileSubmit}>
+              {profileError && <div style={profileModalStyles.error}>{profileError}</div>}
+              <div style={profileModalStyles.field}>
+                <label style={profileModalStyles.label} htmlFor="profile-email">Correo</label>
+                <input
+                  id="profile-email"
+                  type="email"
+                  value={user?.email ?? ''}
+                  disabled
+                  style={{ ...profileModalStyles.input, opacity: 0.8, cursor: 'not-allowed' }}
+                />
+              </div>
+              <div style={profileModalStyles.field}>
+                <label style={profileModalStyles.label} htmlFor="profile-name">Nombre</label>
+                <input
+                  id="profile-name"
+                  type="text"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  placeholder="Tu nombre"
+                  style={profileModalStyles.input}
+                  autoComplete="name"
+                />
+              </div>
+              <div style={profileModalStyles.field}>
+                <label style={profileModalStyles.label} htmlFor="profile-password">Nueva contraseña (opcional)</label>
+                <input
+                  id="profile-password"
+                  type="password"
+                  value={profilePassword}
+                  onChange={(e) => setProfilePassword(e.target.value)}
+                  placeholder="Dejar en blanco para no cambiar"
+                  style={profileModalStyles.input}
+                  autoComplete="new-password"
+                  minLength={6}
+                />
+              </div>
+              <div style={profileModalStyles.field}>
+                <label style={profileModalStyles.label} htmlFor="profile-password-confirm">Confirmar contraseña</label>
+                <input
+                  id="profile-password-confirm"
+                  type="password"
+                  value={profilePasswordConfirm}
+                  onChange={(e) => setProfilePasswordConfirm(e.target.value)}
+                  placeholder="Solo si cambias la contraseña"
+                  style={profileModalStyles.input}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div style={profileModalStyles.actions}>
+                <button type="button" onClick={closeProfileModal} style={profileModalStyles.btnSecondary}>Cancelar</button>
+                <button type="submit" disabled={profileSaving} style={profileModalStyles.btnPrimary}>
+                  {profileSaving ? 'Guardando…' : 'Guardar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
