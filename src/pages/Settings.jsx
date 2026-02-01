@@ -242,8 +242,9 @@ export default function Settings() {
 
   return (
     <div className="page-settings">
-      <div className="page-defs-tabs" role="tablist" aria-label="Configuración">
-        {SETTINGS_TABS.map((tab) => (
+      <div className="page-settings-tabs-scroll" role="none">
+        <div className="page-defs-tabs" role="tablist" aria-label="Configuración">
+          {SETTINGS_TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -255,6 +256,7 @@ export default function Settings() {
             {tab.label}
           </button>
         ))}
+        </div>
       </div>
 
       {settingsTab === 'config' && (

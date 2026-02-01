@@ -52,6 +52,7 @@ export const api = {
     monthlySummary: (year) => request(`/transactions/monthly-summary?year=${year}`),
     dailyIndicators: (year) => request(`/transactions/daily-indicators?year=${year}`),
     expensesByCategory: (month, year) => request(`/transactions/expenses-by-category?month=${month}&year=${year}`),
+    incomesByCategory: (month, year) => request(`/transactions/incomes-by-category?month=${month}&year=${year}`),
     get: (id) => request(`/transactions/${id}`),
     create: (body) => request('/transactions', { method: 'POST', body: JSON.stringify(body) }),
     update: (id, body) => request(`/transactions/${id}`, { method: 'PUT', body: JSON.stringify(body) }),

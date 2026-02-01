@@ -7,14 +7,14 @@
   --text-muted: #8b8b96;
   --accent: #6366f1;
   --accent-hover: #818cf8;
-  --income: #22c55e;
-  --expense: #ef4444;
+  --income: #198754;
+  --expense: #dc3545;
   --radius: 10px;
   --radius-card: 14px;
   --font: 'DM Sans', system-ui, sans-serif;
   --touch-min: 36px;
   /* Botones: editar (amarillo), eliminar (rojo), aplicar (verde), iconos blancos, sin borde */
-  --btn-edit-bg: #eab308;
+  --btn-edit-bg: #ffc107;
   --btn-edit-color: #fff;
   --btn-delete-bg: var(--expense);
   --btn-delete-color: #fff;
@@ -646,6 +646,8 @@ input[type="date"].input-date-picker {
   gap: 0.5rem;
   padding: 1rem 0.75rem;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 .sidebar-header {
   display: flex;
@@ -715,6 +717,22 @@ input[type="date"].input-date-picker {
   justify-content: flex-start;
   padding: 0.4rem 0.65rem;
   font-size: 0.85rem;
+}
+.sidebar-btn-row {
+  display: flex;
+  flex-direction: row;
+  gap: 0.35rem;
+  margin-bottom: 0.15rem;
+}
+.sidebar-btn-row .sidebar-btn {
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+}
+.sidebar-btn-row .sidebar-btn-symbol {
+  font-size: 0.95rem;
 }
 .sidebar-link {
   display: flex;
@@ -830,6 +848,27 @@ input[type="date"].input-date-picker {
 .page-rapidos-y-fijos {
   width: 100%;
   box-sizing: border-box;
+}
+.page-settings {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+/* Contenedor para scroll horizontal de pestañas en móvil */
+.page-settings-tabs-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  margin-left: -0.25rem;
+  margin-right: -0.25rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+.page-settings-tabs-scroll .page-defs-tabs {
+  flex-wrap: nowrap;
+  width: max-content;
 }
 .page-defs-tabs {
   display: inline-flex;
@@ -1059,13 +1098,14 @@ input[type="date"].input-date-picker {
   }
 }
 
-/* Móvil: cadena de altura fija para que solo .layout-main haga scroll */
+/* Móvil: cadena de altura fija para que solo .layout-content haga scroll vertical; sin scroll lateral en la página */
 @media (max-width: 768px) {
   html,
   body,
   #root {
     height: 100% !important;
     overflow: hidden !important;
+    overflow-x: hidden !important;
     min-height: 0 !important;
   }
   .layout-wrapper {
@@ -1074,15 +1114,27 @@ input[type="date"].input-date-picker {
     height: 100% !important;
     min-height: 0 !important;
     overflow: hidden !important;
+    overflow-x: hidden !important;
   }
   .layout-main {
+    display: flex !important;
+    flex-direction: column !important;
     flex: 1 1 0% !important;
     min-height: 0 !important;
+    min-width: 0 !important;
     overflow: hidden !important;
+    overflow-x: hidden !important;
     padding-bottom: 0 !important;
   }
   .layout-content {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    min-width: 0 !important;
     padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
   }
   .movimientos-hint {
     font-size: 0.8rem;

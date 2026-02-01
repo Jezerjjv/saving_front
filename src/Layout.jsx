@@ -18,13 +18,18 @@ import {
 import { useMovimientosSidebar } from './context/MovimientosSidebarContext';
 import { useLayoutHeaderContent } from './context/LayoutHeaderContext';
 
+const inversionesChildren = [
+  { to: '/criptomonedas', label: 'Criptomonedas', Icon: IconCrypto },
+  { to: '/acciones', label: 'Acciones', Icon: IconStocks },
+  { to: '/intereses', label: 'Intereses', Icon: IconPercent },
+];
+
 const navBase = [
   { to: '/movimientos', label: 'Movimientos', Icon: IconFileText },
   { to: '/calendario', label: 'Calendario', Icon: IconCalendar },
   { to: '/cuentas', label: 'Cuentas', Icon: IconCreditCard },
   { to: '/transferencias', label: 'Transferencias', Icon: IconArrowLeftRight },
-  { to: '/criptomonedas', label: 'Criptomonedas', Icon: IconCrypto },
-  { to: '/acciones', label: 'Acciones', Icon: IconStocks },
+  { type: 'group', label: 'Inversiones', Icon: IconStocks, defaultTo: '/criptomonedas', children: inversionesChildren },
   { to: '/configuracion', label: 'Config', Icon: IconSettings },
 ];
 
@@ -35,11 +40,11 @@ const MAIN_TABS = [
 ];
 const DEFS_LABEL = 'Rápidos y Fijos';
 
-function isActive(path, location) {
+function isActive(path, location, item) {
   if (path === '/movimientos') return location.pathname === '/movimientos' || location.pathname === '/rapidos-y-fijos';
-  if (path === '/intereses') return location.pathname === '/intereses';
-  if (path === '/criptomonedas') return location.pathname === '/criptomonedas';
-  if (path === '/acciones') return location.pathname === '/acciones';
+  if (item?.type === 'group' && item.children) {
+    return item.children.some((c) => c.to === location.pathname);
+  }
   return location.pathname.startsWith(path);
 }
 
@@ -55,7 +60,14 @@ export default function Layout({ children }) {
     api.interestHistory.get().then((data) => setInterestEligible(data?.eligible ?? false)).catch(() => setInterestEligible(false));
   }, []);
 
-  const nav = interestEligible ? [...navBase, { to: '/intereses', label: 'Intereses', Icon: IconPercent }] : navBase;
+  const inversionesChildrenFiltered = interestEligible
+    ? inversionesChildren
+    : inversionesChildren.filter((c) => c.to !== '/intereses');
+  const nav = navBase.map((item) =>
+    item.type === 'group'
+      ? { ...item, children: inversionesChildrenFiltered }
+      : item
+  );
 
   const onNavClick = () => setSidebarOpen(false);
 
@@ -92,13 +104,18 @@ export default function Layout({ children }) {
           </div>
 
           <nav className="sidebar-nav" aria-label="Navegación principal">
-            {nav.map(({ to, label, Icon }) => (
-              <div key={to} className="sidebar-nav-item">
+            {nav.map((item) => {
+              const to = item.to ?? item.defaultTo;
+              const label = item.label;
+              const Icon = item.Icon;
+              const active = isActive(to, location, item);
+              return (
+              <div key={to ?? 'inversiones'} className="sidebar-nav-item">
                 <Link
                   to={to}
-                  className={`sidebar-link ${isActive(to, location) ? 'is-active' : ''}`}
+                  className={`sidebar-link ${active ? 'is-active' : ''}`}
                   onClick={onNavClick}
-                  aria-current={isActive(to, location) ? 'page' : undefined}
+                  aria-current={active && !item.children ? 'page' : undefined}
                 >
                   <Icon size={20} />
                   <span>{label}</span>
@@ -107,22 +124,26 @@ export default function Layout({ children }) {
                   <div className="sidebar-subnav">
                     {actions && (
                       <>
-                        <button
-                          type="button"
-                          className="sidebar-btn sidebar-btn-expense"
-                          onClick={() => { actions.openAdd('expense', 'normal'); onNavClick(); }}
-                        >
-                          <span className="sidebar-btn-symbol">+</span>
-                          Añadir gasto
-                        </button>
-                        <button
-                          type="button"
-                          className="sidebar-btn sidebar-btn-income"
-                          onClick={() => { actions.openAdd('income', 'normal'); onNavClick(); }}
-                        >
-                          <span className="sidebar-btn-symbol">+</span>
-                          Añadir ingreso
-                        </button>
+                        <div className="sidebar-btn-row">
+                          <button
+                            type="button"
+                            className="sidebar-btn sidebar-btn-expense"
+                            onClick={() => { actions.openAdd('expense', 'normal'); onNavClick(); }}
+                            title="Añadir gasto"
+                          >
+                            <span className="sidebar-btn-symbol">+</span>
+                            Gasto
+                          </button>
+                          <button
+                            type="button"
+                            className="sidebar-btn sidebar-btn-income"
+                            onClick={() => { actions.openAdd('income', 'normal'); onNavClick(); }}
+                            title="Añadir ingreso"
+                          >
+                            <span className="sidebar-btn-symbol">+</span>
+                            Ingreso
+                          </button>
+                        </div>
                         {MAIN_TABS.map((tab) => (
                           <button
                             key={tab.id}
@@ -172,8 +193,28 @@ export default function Layout({ children }) {
                     </Link>
                   </div>
                 )}
+                {item.type === 'group' && item.children && active && (
+                  <div className="sidebar-subnav">
+                    {item.children.map((child) => {
+                      const ChildIcon = child.Icon;
+                      return (
+                        <Link
+                          key={child.to}
+                          to={child.to}
+                          className={`sidebar-link-btn ${location.pathname === child.to ? 'is-active' : ''}`}
+                          onClick={onNavClick}
+                          aria-current={location.pathname === child.to ? 'page' : undefined}
+                        >
+                          <ChildIcon size={16} />
+                          <span>{child.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            ))}
+            );
+            })}
           </nav>
         </div>
       </aside>

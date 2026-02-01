@@ -28,9 +28,20 @@ function categoryTotal(items) {
   return { income, expense, balance: income - expense };
 }
 
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export default function TransactionAccordion({ dayGroup, filterType, onEdit, onDelete }) {
-  const [openDay, setOpenDay] = useState(true);
-  const [openCats, setOpenCats] = useState({});
+  const isToday = dayGroup.date === todayStr();
+  const [openDay, setOpenDay] = useState(isToday);
+  const [openCats, setOpenCats] = useState(() => {
+    if (!isToday) return {};
+    const o = {};
+    (dayGroup.categories || []).forEach((cat) => { o[cat.categoryId] = false; });
+    return o;
+  });
 
   const toggleCat = (catId) => {
     setOpenCats((prev) => ({ ...prev, [catId]: !prev[catId] }));
@@ -58,19 +69,45 @@ export default function TransactionAccordion({ dayGroup, filterType, onEdit, onD
       )
     : { income: 0, expense: 0, balance: 0 };
 
+  const allCatsOpen = filteredCategories.every((cat) => openCats[cat.categoryId] !== false);
+  const collapseOrExpandAll = (e) => {
+    e.stopPropagation();
+    const next = allCatsOpen ? false : true;
+    setOpenCats((prev) => {
+      const nextState = { ...prev };
+      filteredCategories.forEach((cat) => {
+        nextState[cat.categoryId] = next;
+      });
+      return nextState;
+    });
+  };
+
   return (
     <div style={styles.dayBlock}>
-      <button
-        type="button"
-        onClick={() => setOpenDay(!openDay)}
-        style={styles.dayHeader}
-      >
-        <span style={styles.dayDate}>{formatDate(dayGroup.date)}</span>
-        <span style={{ ...styles.dayTotal, color: daySum.balance >= 0 ? 'var(--income)' : 'var(--expense)' }}>
-          {daySum.balance >= 0 ? '+' : ''}{formatEur(daySum.balance)}
-        </span>
-        <span style={styles.chevron}>{openDay ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}</span>
-      </button>
+      <div style={styles.dayHeader}>
+        <button
+          type="button"
+          onClick={() => setOpenDay(!openDay)}
+          style={styles.dayHeaderToggle}
+        >
+          <span style={styles.dayDate}>{formatDate(dayGroup.date)}</span>
+          <span style={{ ...styles.dayTotal, color: daySum.balance >= 0 ? 'var(--income)' : 'var(--expense)' }}>
+            {daySum.balance >= 0 ? '+' : ''}{formatEur(daySum.balance)}
+          </span>
+          <span style={styles.chevron}>{openDay ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}</span>
+        </button>
+        {openDay && filteredCategories.length > 0 && (
+          <button
+            type="button"
+            onClick={collapseOrExpandAll}
+            style={styles.collapseAllBtn}
+            title={allCatsOpen ? 'Comprimir todas las categorías' : 'Expandir todas las categorías'}
+            aria-label={allCatsOpen ? 'Comprimir categorías' : 'Expandir categorías'}
+          >
+            {allCatsOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+          </button>
+        )}
+      </div>
       {openDay && (
         <div style={styles.dayContent}>
           {filteredCategories.map((cat) => {
@@ -88,7 +125,7 @@ export default function TransactionAccordion({ dayGroup, filterType, onEdit, onD
                   <span style={{ ...styles.catTotal, color: catSum.balance >= 0 ? 'var(--income)' : 'var(--expense)' }}>
                     {catSum.balance >= 0 ? '+' : ''}{formatEur(catSum.balance)}
                   </span>
-                  <span style={styles.chevron}>{isOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}</span>
+                  <span style={styles.chevron}>{isOpen ? <IconChevronDown size={12} /> : <IconChevronRight size={12} />}</span>
                 </button>
                 {isOpen && (
                   <ul style={styles.items}>
@@ -123,57 +160,83 @@ export default function TransactionAccordion({ dayGroup, filterType, onEdit, onD
 }
 
 const styles = {
-  dayBlock: { marginBottom: '0.5rem' },
+  dayBlock: { marginBottom: '0.35rem' },
   dayHeader: {
     width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.35rem',
+    padding: '0.4rem 0.5rem',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+  },
+  dayHeaderToggle: {
+    flex: 1,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: '0.5rem',
-    padding: '0.75rem 1rem',
-    background: 'var(--surface)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)',
-    color: 'var(--text)',
-    fontSize: '1rem',
-    textAlign: 'left',
-    cursor: 'pointer',
-  },
-  dayDate: { minWidth: '8rem', textAlign: 'center' },
-  dayTotal: { fontWeight: 700, fontSize: '0.95rem' },
-  chevron: { color: 'var(--text-muted)', fontSize: '0.75rem' },
-  dayContent: { marginTop: '0.25rem', marginLeft: '0.5rem', borderLeft: '2px solid var(--border)', paddingLeft: '0.75rem' },
-  catBlock: { marginBottom: '0.5rem' },
-  catHeader: {
-    width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.5rem 0.75rem',
-    background: 'var(--surface-hover)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius)',
+    padding: 0,
+    background: 'none',
+    border: 'none',
     color: 'var(--text)',
     fontSize: '0.9rem',
     textAlign: 'left',
     cursor: 'pointer',
+    fontFamily: 'inherit',
   },
-  catIcon: { fontSize: '1.1rem' },
-  catTotal: { marginLeft: 'auto', fontWeight: 600, fontSize: '0.85rem' },
-  items: { listStyle: 'none', padding: 0, margin: '0.25rem 0 0 0.5rem' },
+  dayDate: { minWidth: '7rem', textAlign: 'center' },
+  dayTotal: { fontWeight: 700, fontSize: '0.85rem' },
+  chevron: { color: 'var(--text-muted)', flexShrink: 0 },
+  collapseAllBtn: {
+    flexShrink: 0,
+    width: 28,
+    height: 28,
+    minWidth: 28,
+    minHeight: 28,
+    padding: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'var(--surface-hover)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    color: 'var(--text-muted)',
+    cursor: 'pointer',
+  },
+  dayContent: { marginTop: '0.2rem', marginLeft: '0.4rem', borderLeft: '1px solid var(--border)', paddingLeft: '0.5rem' },
+  catBlock: { marginBottom: '0.35rem' },
+  catHeader: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    padding: '0.35rem 0.5rem',
+    background: 'var(--surface-hover)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    color: 'var(--text)',
+    fontSize: '0.85rem',
+    textAlign: 'left',
+    cursor: 'pointer',
+  },
+  catIcon: { fontSize: '1rem' },
+  catTotal: { marginLeft: 'auto', fontWeight: 600, fontSize: '0.8rem' },
+  items: { listStyle: 'none', padding: 0, margin: '0.2rem 0 0 0.35rem' },
   item: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '0.5rem 0.75rem',
+    padding: '0.35rem 0.5rem',
     background: 'var(--surface)',
     border: '1px solid var(--border)',
     borderRadius: 'var(--radius)',
-    marginTop: '0.25rem',
+    marginTop: '0.2rem',
   },
-  itemMain: { display: 'flex', flexDirection: 'column', gap: '0.15rem' },
-  amount: { fontWeight: 600 },
-  itemActions: { display: 'flex', gap: '0.25rem' },
-  btnIcon: { padding: 0, fontSize: '0.9rem', background: 'var(--btn-edit-bg)', color: 'var(--btn-edit-color)', border: 'none', borderRadius: 'var(--radius)', width: 32, height: 32, minWidth: 32, minHeight: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
-  btnIconDanger: { padding: 0, fontSize: '0.9rem', background: 'var(--btn-delete-bg)', color: 'var(--btn-delete-color)', border: 'none', borderRadius: 'var(--radius)', width: 32, height: 32, minWidth: 32, minHeight: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  itemMain: { display: 'flex', flexDirection: 'column', gap: '0.1rem' },
+  amount: { fontWeight: 600, fontSize: '0.85rem' },
+  itemActions: { display: 'flex', gap: '0.2rem' },
+  btnIcon: { padding: 0, background: 'var(--btn-edit-bg)', color: 'var(--btn-edit-color)', border: 'none', borderRadius: 'var(--radius)', width: 28, height: 28, minWidth: 28, minHeight: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  btnIconDanger: { padding: 0, background: 'var(--btn-delete-bg)', color: 'var(--btn-delete-color)', border: 'none', borderRadius: 'var(--radius)', width: 28, height: 28, minWidth: 28, minHeight: 28, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
 };

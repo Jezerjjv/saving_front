@@ -52,6 +52,7 @@ export default function Transactions() {
   const [applyingFixedIncomes, setApplyingFixedIncomes] = useState(false);
   const [applyingFixedExpenses, setApplyingFixedExpenses] = useState(false);
   const [expensesByCategory, setExpensesByCategory] = useState([]);
+  const [incomesByCategory, setIncomesByCategory] = useState([]);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [applyingQuickId, setApplyingQuickId] = useState(null);
   const [searchText, setSearchText] = useState('');
@@ -86,6 +87,7 @@ export default function Transactions() {
     Promise.all([
       api.transactions.grouped(month, year),
       api.transactions.expensesByCategory(month, year),
+      api.transactions.incomesByCategory(month, year),
       api.accounts.list(),
       api.categories.list(),
       api.fixedExpenses.list(),
@@ -93,9 +95,10 @@ export default function Transactions() {
       api.quickTemplates.list({ type: 'expense' }),
       api.quickTemplates.list({ type: 'income' }),
     ])
-      .then(([g, byCat, a, c, fe, fi, qe, qi]) => {
+      .then(([g, byExpCat, byIncCat, a, c, fe, fi, qe, qi]) => {
         setGrouped(Array.isArray(g) ? g : []);
-        setExpensesByCategory(Array.isArray(byCat) ? byCat : []);
+        setExpensesByCategory(Array.isArray(byExpCat) ? byExpCat : []);
+        setIncomesByCategory(Array.isArray(byIncCat) ? byIncCat : []);
         setAccounts(Array.isArray(a) ? a : []);
         setCategories(Array.isArray(c) ? c : []);
         setFixedExpenses(Array.isArray(fe) ? fe : []);
@@ -587,14 +590,83 @@ export default function Transactions() {
             </div>
           )}
 
+          {activeTab === 'all' && (() => {
+            const byCat = {};
+            expensesByCategory.forEach((r) => {
+              const id = r.categoryId ?? 'sin-categoria';
+              byCat[id] = { categoryId: r.categoryId, categoryName: r.categoryName, categoryIcon: r.categoryIcon, totalExpense: r.total, totalIncome: 0 };
+            });
+            incomesByCategory.forEach((r) => {
+              const id = r.categoryId ?? 'sin-categoria';
+              if (!byCat[id]) byCat[id] = { categoryId: r.categoryId, categoryName: r.categoryName, categoryIcon: r.categoryIcon, totalExpense: 0, totalIncome: 0 };
+              byCat[id].totalIncome = r.total;
+              if (!byCat[id].categoryName) byCat[id].categoryName = r.categoryName;
+              if (!byCat[id].categoryIcon) byCat[id].categoryIcon = r.categoryIcon;
+            });
+            const mergedCategories = Object.values(byCat).sort((a, b) => (b.totalExpense + b.totalIncome) - (a.totalExpense + a.totalIncome));
+            const totalExp = expensesByCategory.reduce((s, r) => s + r.total, 0);
+            const totalInc = incomesByCategory.reduce((s, r) => s + r.total, 0);
+            const fmt = (n) => new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(n);
+            return (
           <div style={styles.summaryBlock}>
             <button
               type="button"
               onClick={() => setSummaryOpen(!summaryOpen)}
               style={styles.summaryHeader}
             >
-              <span>Resumen del mes</span>
-              <span style={styles.summaryHeaderTotal}>
+              <span>Resumen del mes (gastos e ingresos)</span>
+              <span style={styles.chevron}>
+                {summaryOpen ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+              </span>
+            </button>
+            {summaryOpen && (
+              <div style={styles.summaryContent}>
+                {mergedCategories.length === 0 ? (
+                  <p style={styles.empty}>No hay movimientos en {MONTHS[month - 1]} {year}.</p>
+                ) : (
+                  <>
+                    {mergedCategories.map((row) => (
+                      <div key={row.categoryId ?? 'sin-categoria'} style={styles.summaryRow}>
+                        <span style={styles.summaryCatIcon}>{row.categoryIcon}</span>
+                        <div style={styles.summaryCatInfo}>
+                          <span style={styles.summaryCatName}>{row.categoryName}</span>
+                        </div>
+                        <div style={styles.summaryCatAmounts}>
+                          {row.totalExpense > 0 && (
+                            <span style={styles.summaryCatTotalExpense}>{fmt(row.totalExpense)}</span>
+                          )}
+                          {row.totalExpense > 0 && row.totalIncome > 0 && <span style={{ margin: '0 0.25rem', color: 'var(--text-muted)' }}>·</span>}
+                          {row.totalIncome > 0 && (
+                            <span style={styles.summaryCatTotalIncome}>{fmt(row.totalIncome)}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    <div style={styles.summaryTotalRow}>
+                      <span>Total gastos</span>
+                      <span style={styles.summaryTotalAmountExpense}>{fmt(totalExp)}</span>
+                    </div>
+                    <div style={styles.summaryTotalRow}>
+                      <span>Total ingresos</span>
+                      <span style={styles.summaryTotalAmountIncome}>{fmt(totalInc)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+            );
+          })()}
+
+          {activeTab === 'expense' && (
+          <div style={styles.summaryBlock}>
+            <button
+              type="button"
+              onClick={() => setSummaryOpen(!summaryOpen)}
+              style={styles.summaryHeader}
+            >
+              <span>Resumen de gastos</span>
+              <span style={styles.summaryHeaderTotalExpense}>
                 {expensesByCategory.length > 0
                   ? new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(
                       expensesByCategory.reduce((s, r) => s + r.total, 0)
@@ -623,12 +695,13 @@ export default function Transactions() {
                               <div
                                 style={{
                                   ...styles.summaryBar,
+                                  ...styles.summaryBarExpense,
                                   width: `${pct}%`,
                                 }}
                               />
                             </div>
                           </div>
-                          <span style={styles.summaryCatTotal}>
+                          <span style={styles.summaryCatTotalExpense}>
                             {new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(row.total)}
                             <span style={styles.summaryCatPct}> · {totalAll > 0 ? pct.toFixed(0) : 0}%</span>
                           </span>
@@ -637,7 +710,7 @@ export default function Transactions() {
                     })}
                     <div style={styles.summaryTotalRow}>
                       <span>Total gastos</span>
-                      <span style={styles.summaryTotalAmount}>
+                      <span style={styles.summaryTotalAmountExpense}>
                         {new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(
                           expensesByCategory.reduce((s, r) => s + r.total, 0)
                         )}
@@ -648,6 +721,72 @@ export default function Transactions() {
               </div>
             )}
           </div>
+          )}
+
+          {activeTab === 'income' && (
+          <div style={styles.summaryBlock}>
+            <button
+              type="button"
+              onClick={() => setSummaryOpen(!summaryOpen)}
+              style={styles.summaryHeader}
+            >
+              <span>Resumen de ingresos</span>
+              <span style={styles.summaryHeaderTotalIncome}>
+                {incomesByCategory.length > 0
+                  ? new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(
+                      incomesByCategory.reduce((s, r) => s + r.total, 0)
+                    )
+                  : '—'}
+              </span>
+              <span style={styles.chevron}>
+                {summaryOpen ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+              </span>
+            </button>
+            {summaryOpen && (
+              <div style={styles.summaryContent}>
+                {incomesByCategory.length === 0 ? (
+                  <p style={styles.empty}>No hay ingresos en {MONTHS[month - 1]} {year}.</p>
+                ) : (
+                  <>
+                    {incomesByCategory.map((row) => {
+                      const totalAll = incomesByCategory.reduce((s, r) => s + r.total, 0);
+                      const pct = totalAll > 0 ? (row.total / totalAll) * 100 : 0;
+                      return (
+                        <div key={row.categoryId ?? 'sin-categoria'} style={styles.summaryRow}>
+                          <span style={styles.summaryCatIcon}>{row.categoryIcon}</span>
+                          <div style={styles.summaryCatInfo}>
+                            <span style={styles.summaryCatName}>{row.categoryName}</span>
+                            <div style={styles.summaryBarWrap}>
+                              <div
+                                style={{
+                                  ...styles.summaryBar,
+                                  ...styles.summaryBarIncome,
+                                  width: `${pct}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <span style={styles.summaryCatTotalIncome}>
+                            {new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(row.total)}
+                            <span style={styles.summaryCatPct}> · {totalAll > 0 ? pct.toFixed(0) : 0}%</span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                    <div style={styles.summaryTotalRow}>
+                      <span>Total ingresos</span>
+                      <span style={styles.summaryTotalAmountIncome}>
+                        {new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(
+                          incomesByCategory.reduce((s, r) => s + r.total, 0)
+                        )}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          )}
         </>
       )}
     </div>
@@ -720,6 +859,8 @@ const styles = {
     cursor: 'pointer',
   },
   summaryHeaderTotal: { color: 'var(--expense)', fontWeight: 700 },
+  summaryHeaderTotalExpense: { color: 'var(--expense)', fontWeight: 700 },
+  summaryHeaderTotalIncome: { color: 'var(--income)', fontWeight: 700 },
   chevron: { color: 'var(--text-muted)' },
   summaryContent: {
     marginTop: '0.25rem',
@@ -728,6 +869,15 @@ const styles = {
     paddingLeft: '0.75rem',
     paddingTop: '0.5rem',
     paddingBottom: '0.5rem',
+  },
+  summarySection: {
+    marginBottom: '1.25rem',
+  },
+  summarySectionTitle: {
+    fontSize: '0.9rem',
+    fontWeight: 600,
+    color: 'var(--text)',
+    marginBottom: '0.5rem',
   },
   summaryRow: {
     display: 'flex',
@@ -747,11 +897,15 @@ const styles = {
   },
   summaryBar: {
     height: '100%',
-    background: 'var(--expense)',
     borderRadius: 2,
     minWidth: 2,
   },
+  summaryBarExpense: { background: 'var(--expense)' },
+  summaryBarIncome: { background: 'var(--income)' },
   summaryCatTotal: { color: 'var(--expense)', fontWeight: 600, fontSize: '0.9rem' },
+  summaryCatAmounts: { display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap', flexShrink: 0 },
+  summaryCatTotalExpense: { color: 'var(--expense)', fontWeight: 600, fontSize: '0.9rem' },
+  summaryCatTotalIncome: { color: 'var(--income)', fontWeight: 600, fontSize: '0.9rem' },
   summaryCatPct: { color: 'var(--text-muted)', fontWeight: 500, marginLeft: '0.25rem' },
   summaryTotalRow: {
     display: 'flex',
@@ -764,4 +918,6 @@ const styles = {
     fontSize: '1rem',
   },
   summaryTotalAmount: { color: 'var(--expense)' },
+  summaryTotalAmountExpense: { color: 'var(--expense)' },
+  summaryTotalAmountIncome: { color: 'var(--income)' },
 };

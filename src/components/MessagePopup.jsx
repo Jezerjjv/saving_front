@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
+import { IconCheck } from './Icons.jsx';
 
 const typeStyles = {
-  success: { bg: 'var(--income)', color: '#fff' },
+  success: { bg: 'var(--surface)', color: 'var(--text)', borderColor: 'var(--income)', iconColor: 'var(--income)' },
   error: { bg: 'var(--expense)', color: '#fff' },
   info: { bg: 'var(--accent)', color: '#fff' },
 };
@@ -38,6 +39,7 @@ export default function MessagePopup({ notification, onCloseNotification, confir
   }
 
   const style = typeStyles[notification.type] || typeStyles.info;
+  const isSuccess = notification.type === 'success';
   return (
     <div style={styles.overlay} onClick={onCloseNotification}>
       <div
@@ -45,11 +47,17 @@ export default function MessagePopup({ notification, onCloseNotification, confir
           ...styles.notificationBox,
           background: style.bg,
           color: style.color,
+          border: style.borderColor ? `2px solid ${style.borderColor}` : undefined,
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {isSuccess && (
+          <div style={styles.successIconWrap}>
+            <IconCheck size={28} style={{ color: style.iconColor || style.color }} />
+          </div>
+        )}
         <p style={styles.notificationMessage}>{notification.message}</p>
-        <button type="button" onClick={onCloseNotification} style={styles.notificationClose}>
+        <button type="button" onClick={onCloseNotification} style={isSuccess ? styles.notificationCloseSuccess : styles.notificationClose}>
           Cerrar
         </button>
       </div>
@@ -103,11 +111,25 @@ const styles = {
     width: '100%',
     boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
   },
+  successIconWrap: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '0.5rem',
+  },
   notificationMessage: { margin: '0 0 0.75rem', fontSize: '1rem' },
   notificationClose: {
     background: 'rgba(255,255,255,0.25)',
     color: 'inherit',
     border: 'none',
+    padding: '0.35rem 0.75rem',
+    borderRadius: 'var(--radius)',
+    cursor: 'pointer',
+    fontSize: '0.9rem',
+  },
+  notificationCloseSuccess: {
+    background: 'var(--surface-hover)',
+    color: 'var(--text)',
+    border: '1px solid var(--border)',
     padding: '0.35rem 0.75rem',
     borderRadius: 'var(--radius)',
     cursor: 'pointer',
