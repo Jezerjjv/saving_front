@@ -130,6 +130,9 @@ body {
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Páginas de auth (login, registro, bloqueo) */
@@ -1419,14 +1422,29 @@ input[type="date"].input-date-picker {
 }
 
 /* Móvil: cadena de altura fija para que solo .layout-content haga scroll vertical; sin scroll lateral en la página */
+/* iOS Safari: -webkit-fill-available evita pantalla negra / altura 0 */
 @media (max-width: 768px) {
-  html,
-  body,
+  html {
+    height: 100%;
+    height: -webkit-fill-available;
+    overflow: hidden;
+    overflow-x: hidden;
+  }
+  body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    height: 100%;
+    overflow: hidden;
+    overflow-x: hidden;
+  }
   #root {
-    height: 100% !important;
-    overflow: hidden !important;
-    overflow-x: hidden !important;
-    min-height: 0 !important;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    overflow-x: hidden;
   }
   .layout-wrapper {
     display: flex !important;
