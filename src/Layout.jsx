@@ -428,11 +428,14 @@ export default function Layout() {
                   <input
                     type="checkbox"
                     checked={pinEnabled}
-                    onChange={async (e) => {
+                    onChange={(e) => {
                       if (e.target.checked) setPinModalOpen(true);
                       else {
-                        const ok = await confirm('¿Desactivar el PIN? La próxima vez que abras la app no se pedirá PIN.');
-                        if (ok) clearPin();
+                        confirm({
+                          title: 'Desactivar PIN',
+                          message: '¿Desactivar el PIN? La próxima vez que abras la app no se pedirá PIN.',
+                          onConfirm: () => clearPin(),
+                        });
                       }
                     }}
                     style={profileModalStyles.checkbox}
@@ -450,12 +453,15 @@ export default function Layout() {
                         <button
                           type="button"
                           style={profileModalStyles.btnSecondary}
-                          onClick={async () => {
-                            const ok = await confirm('¿Quitar la biometría? Solo podrás desbloquear con PIN.');
-                            if (ok) {
-                              clearBiometricCredential();
-                              showMessage('Biometría desactivada.', 'success');
-                            }
+                          onClick={() => {
+                            confirm({
+                              title: 'Quitar biometría',
+                              message: '¿Quitar la biometría? Solo podrás desbloquear con PIN.',
+                              onConfirm: () => {
+                                clearBiometricCredential();
+                                showMessage('Biometría desactivada.', 'success');
+                              },
+                            });
                           }}
                         >
                           Quitar biometría
