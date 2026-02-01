@@ -101,6 +101,12 @@ export default function Accounts() {
     setShowForm(true);
   };
 
+  const closeFormModal = () => {
+    setEditing(null);
+    setForm({ name: '', balance: '0', accountType: 'bank', currency: 'EUR' });
+    setShowForm(false);
+  };
+
   const toggleProducts = (accountId) => {
     if (expandedProducts === accountId) {
       setExpandedProducts(null);
@@ -186,7 +192,7 @@ export default function Accounts() {
       }
       setEditing(null);
       setForm({ name: '', balance: '0', accountType: 'bank', currency: 'EUR' });
-      setShowForm(false);
+      closeFormModal();
       load();
       showMessage(editing ? 'Cuenta actualizada.' : 'Cuenta creada.', 'success');
     } catch (err) {
@@ -231,51 +237,70 @@ export default function Accounts() {
       )}
 
       {showForm && (
-        <form onSubmit={save} style={styles.form}>
-          <input
-            placeholder="Nombre de la cuenta"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            style={styles.input}
-            required
-          />
-          <label style={styles.label}>Tipo de cuenta</label>
-          <select
-            value={form.accountType}
-            onChange={(e) => setForm((f) => ({ ...f, accountType: e.target.value }))}
-            style={styles.input}
-          >
-            {ACCOUNT_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-          <label style={styles.label}>Moneda de la cuenta</label>
-          <select
-            value={form.currency}
-            onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
-            style={styles.input}
-          >
-            {CURRENCIES.map((c) => (
-              <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </select>
-          <input
-            type="number"
-            step="0.01"
-            placeholder="Saldo inicial"
-            value={form.balance}
-            onChange={(e) => setForm((f) => ({ ...f, balance: e.target.value }))}
-            style={styles.input}
-          />
-          <div style={styles.formActions}>
-            <button type="submit" style={styles.btnPrimary}>
-              {editing ? 'Guardar' : 'Crear'}
-            </button>
-            <button type="button" onClick={() => { setEditing(null); setForm({ name: '', balance: '0', accountType: 'bank', currency: 'EUR' }); setShowForm(false); }} style={styles.btnSecondary}>
-              Cancelar
-            </button>
+        <div style={styles.modalOverlay} onClick={closeFormModal} role="dialog" aria-modal="true" aria-labelledby="account-form-title">
+          <div style={styles.modalBox} onClick={(e) => e.stopPropagation()} className="modal-panel">
+            <h3 id="account-form-title" style={styles.modalTitle}>{editing ? 'Editar cuenta' : 'Nueva cuenta'}</h3>
+            <form onSubmit={save}>
+              <div style={styles.modalField}>
+                <label style={styles.modalLabel} htmlFor="account-name">Nombre</label>
+                <input
+                  id="account-name"
+                  placeholder="Nombre de la cuenta"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  style={styles.input}
+                  className="input-modern"
+                  required
+                />
+              </div>
+              <div style={styles.modalField}>
+                <label style={styles.modalLabel} htmlFor="account-type">Tipo de cuenta</label>
+                <select
+                  id="account-type"
+                  value={form.accountType}
+                  onChange={(e) => setForm((f) => ({ ...f, accountType: e.target.value }))}
+                  style={styles.input}
+                  className="select-modern"
+                >
+                  {ACCOUNT_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={styles.modalField}>
+                <label style={styles.modalLabel} htmlFor="account-currency">Moneda</label>
+                <select
+                  id="account-currency"
+                  value={form.currency}
+                  onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
+                  style={styles.input}
+                  className="select-modern"
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={styles.modalField}>
+                <label style={styles.modalLabel} htmlFor="account-balance">Saldo inicial</label>
+                <input
+                  id="account-balance"
+                  type="number"
+                  step="0.01"
+                  placeholder="0"
+                  value={form.balance}
+                  onChange={(e) => setForm((f) => ({ ...f, balance: e.target.value }))}
+                  style={styles.input}
+                  className="input-modern"
+                />
+              </div>
+              <div style={styles.modalActions}>
+                <button type="submit" style={styles.btnPrimary}>{editing ? 'Guardar' : 'Crear'}</button>
+                <button type="button" onClick={closeFormModal} style={styles.btnSecondary}>Cancelar</button>
+              </div>
+            </form>
           </div>
-        </form>
+        </div>
       )}
 
       <div className="accounts-grid" style={styles.grid}>
@@ -441,8 +466,14 @@ const styles = {
   balanceBlur: { filter: 'blur(4px)' },
   label: { display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' },
   form: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1rem', marginBottom: '1rem' },
-  input: { width: '100%', padding: '0.75rem', marginBottom: '0.5rem', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '1rem' },
+  input: { width: '100%', padding: '0.75rem', boxSizing: 'border-box', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '1rem' },
   formActions: { display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' },
+  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' },
+  modalBox: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', padding: '1.25rem', maxWidth: 420, width: '100%', boxShadow: '0 24px 48px rgba(0,0,0,0.3)' },
+  modalTitle: { margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 600 },
+  modalField: { marginBottom: '0.75rem' },
+  modalLabel: { display: 'block', fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' },
+  modalActions: { display: 'flex', gap: '0.5rem', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)', flexWrap: 'wrap' },
   grid: { marginTop: '0.5rem' },
   card: { position: 'relative' },
   typeBadge: { position: 'absolute', top: '0.75rem', left: '0.75rem', fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: 'var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)' },

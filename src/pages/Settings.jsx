@@ -9,6 +9,7 @@ import IconPicker from '../components/IconPicker.jsx';
 
 const SETTINGS_TABS = [
   { id: 'config', label: 'Configuración' },
+  { id: 'products', label: 'Productos' },
   { id: 'icons', label: 'Iconos' },
   { id: 'categories', label: 'Categorías' },
 ];
@@ -31,6 +32,10 @@ export default function Settings() {
   const [iconPage, setIconPage] = useState(1);
   const [categorySearch, setCategorySearch] = useState('');
   const [iconSearch, setIconSearch] = useState('');
+  const [productTypes, setProductTypes] = useState([]);
+  const [productForm, setProductForm] = useState({ name: '', icon: '📦' });
+  const [editingProductType, setEditingProductType] = useState(null);
+  const [productModalOpen, setProductModalOpen] = useState(false);
 
   const PAGE_SIZE = 10;
   const allCategories = Array.isArray(categories) ? categories : [];
@@ -64,10 +69,12 @@ export default function Settings() {
     Promise.all([
       api.icons.list().then((data) => Array.isArray(data) ? data : []),
       api.categories.list().then((data) => Array.isArray(data) ? data : []),
+      api.productTypes.list().then((data) => Array.isArray(data) ? data : []),
     ])
-      .then(([iconsList, cats]) => {
+      .then(([iconsList, cats, types]) => {
         setIcons(iconsList);
         setCategories(cats);
+        setProductTypes(types);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -183,6 +190,54 @@ export default function Settings() {
     });
   };
 
+  const defaultProductIcon = icons.length > 0 ? icons[0].symbol : '📦';
+  const openAddProduct = () => {
+    setEditingProductType(null);
+    setProductForm({ name: '', icon: defaultProductIcon });
+    setProductModalOpen(true);
+  };
+  const openEditProductType = (pt) => {
+    setEditingProductType(pt);
+    setProductForm({ name: pt.name, icon: pt.icon || defaultProductIcon });
+    setProductModalOpen(true);
+  };
+  const closeProductModal = () => {
+    setProductModalOpen(false);
+    setEditingProductType(null);
+    setProductForm({ name: '', icon: defaultProductIcon });
+  };
+  const saveProductType = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingProductType) {
+        await api.productTypes.update(editingProductType.id, { name: productForm.name.trim(), icon: productForm.icon || defaultProductIcon });
+        showMessage('Producto actualizado.', 'success');
+      } else {
+        await api.productTypes.create({ name: productForm.name.trim(), icon: productForm.icon || defaultProductIcon });
+        showMessage('Producto creado.', 'success');
+      }
+      closeProductModal();
+      load();
+    } catch (err) {
+      showMessage(err.message || 'Error al guardar.', 'error');
+    }
+  };
+  const deleteProductType = (id) => {
+    confirm({
+      title: 'Eliminar tipo de producto',
+      message: '¿Eliminar este tipo de producto? No se puede si alguna cuenta lo está usando.',
+      onConfirm: async () => {
+        try {
+          await api.productTypes.delete(id);
+          load();
+          showMessage('Tipo de producto eliminado.', 'success');
+        } catch (err) {
+          showMessage(err.message || 'Error al eliminar.', 'error');
+        }
+      },
+    });
+  };
+
   if (loading) return <Loader />;
 
   return (
@@ -245,6 +300,83 @@ export default function Settings() {
             <p style={styles.hint}>Cuando está activo, los importes de las cuentas se muestran difuminados en Resumen y Cuentas.</p>
           </section>
         </>
+      )}
+
+      {settingsTab === 'products' && (
+        <section style={styles.section}>
+          <div style={styles.sectionHeader}>
+            <div>
+              <h2 style={styles.subtitle}>Tipos de producto</h2>
+              <p style={styles.hint}>Tipos de producto para cuentas (plan de pensiones, inversiones, etc.). Se listan en Cuentas al añadir un producto a una cuenta.</p>
+            </div>
+            <button type="button" onClick={openAddProduct} style={styles.btnPrimary}>
+              + Añadir
+            </button>
+          </div>
+          <div style={styles.tableCard}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Icono</th>
+                  <th style={styles.th}>Nombre</th>
+                  <th style={styles.thActions}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(Array.isArray(productTypes) ? productTypes : []).map((pt) => (
+                  <tr key={pt.id} style={styles.tr}>
+                    <td style={styles.tdSymbol}>{pt.icon || '📦'}</td>
+                    <td style={styles.td}>{pt.name}</td>
+                    <td style={styles.tdActions}>
+                      <button type="button" className="btn-icon-action" onClick={() => openEditProductType(pt)} style={styles.btnIcon} title="Editar" aria-label="Editar"><IconEdit size={16} /></button>
+                      <button type="button" className="btn-icon-action" onClick={() => deleteProductType(pt.id)} style={styles.btnIconDanger} title="Eliminar" aria-label="Eliminar"><IconTrash size={16} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {(Array.isArray(productTypes) ? productTypes : []).length === 0 && (
+              <p style={styles.tableEmpty}>No hay tipos de producto. Haz clic en &quot;+ Añadir&quot; para crear uno. Luego en Cuentas podrás asignarlos a productos de cada cuenta.</p>
+            )}
+          </div>
+
+          {productModalOpen && (
+            <div style={styles.modalOverlay} onClick={closeProductModal} role="dialog" aria-modal="true" aria-labelledby="product-type-modal-title">
+              <div style={styles.modalBox} onClick={(e) => e.stopPropagation()} className="modal-panel">
+                <h3 id="product-type-modal-title" style={styles.modalTitle}>{editingProductType ? 'Editar tipo de producto' : 'Nuevo tipo de producto'}</h3>
+                <form onSubmit={saveProductType}>
+                  <div style={styles.modalFormRow}>
+                    <div style={styles.modalField}>
+                      <label style={styles.modalLabel}>Nombre</label>
+                      <input
+                        placeholder="Ej. Plan de pensiones"
+                        value={productForm.name}
+                        onChange={(e) => setProductForm((f) => ({ ...f, name: e.target.value }))}
+                        className="input-modern"
+                        style={styles.modalInput}
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <div style={styles.modalField}>
+                      <label style={styles.modalLabel}>Icono</label>
+                      <IconPicker
+                        icons={icons}
+                        value={productForm.icon}
+                        onChange={(symbol) => setProductForm((f) => ({ ...f, icon: symbol }))}
+                        placeholder="Elegir icono"
+                      />
+                    </div>
+                  </div>
+                  <div style={styles.modalActions}>
+                    <button type="submit" style={styles.btnPrimary}>{editingProductType ? 'Guardar' : 'Añadir'}</button>
+                    <button type="button" onClick={closeProductModal} style={styles.btnSecondary}>Cancelar</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </section>
       )}
 
       {settingsTab === 'icons' && (

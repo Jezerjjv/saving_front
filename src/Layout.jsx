@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { api } from './api';
 import {
   IconCalendar,
   IconCreditCard,
@@ -10,11 +11,12 @@ import {
   IconMenu,
   IconChevronDown,
   IconChevronUp,
+  IconPercent,
 } from './components/Icons.jsx';
 import { useMovimientosSidebar } from './context/MovimientosSidebarContext';
 import { useLayoutHeaderContent } from './context/LayoutHeaderContext';
 
-const nav = [
+const navBase = [
   { to: '/movimientos', label: 'Movimientos', Icon: IconFileText },
   { to: '/calendario', label: 'Calendario', Icon: IconCalendar },
   { to: '/cuentas', label: 'Cuentas', Icon: IconCreditCard },
@@ -31,6 +33,7 @@ const DEFS_LABEL = 'Rápidos y Fijos';
 
 function isActive(path, location) {
   if (path === '/movimientos') return location.pathname === '/movimientos' || location.pathname === '/rapidos-y-fijos';
+  if (path === '/intereses') return location.pathname === '/intereses';
   return location.pathname.startsWith(path);
 }
 
@@ -40,6 +43,13 @@ export default function Layout({ children }) {
   const actions = actionsRef?.current;
   const headerTitle = useLayoutHeaderContent();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [interestEligible, setInterestEligible] = useState(false);
+
+  useEffect(() => {
+    api.interestHistory.get().then((data) => setInterestEligible(data?.eligible ?? false)).catch(() => setInterestEligible(false));
+  }, []);
+
+  const nav = interestEligible ? [...navBase, { to: '/intereses', label: 'Intereses', Icon: IconPercent }] : navBase;
 
   const onNavClick = () => setSidebarOpen(false);
 

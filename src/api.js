@@ -15,6 +15,9 @@ export const api = {
   productTypes: {
     list: () => request('/product-types'),
     get: (id) => request(`/product-types/${id}`),
+    create: (body) => request('/product-types', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id, body) => request(`/product-types/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: (id) => request(`/product-types/${id}`, { method: 'DELETE' }),
   },
   accounts: {
     list: () => request('/accounts'),
@@ -98,5 +101,13 @@ export const api = {
   settings: {
     get: () => request('/settings'),
     update: (body) => request('/settings', { method: 'PUT', body: JSON.stringify(body) }),
+  },
+  interestHistory: {
+    get: (year, month) => {
+      const q = new URLSearchParams();
+      if (year != null) q.set('year', String(year));
+      if (month != null) q.set('month', String(month));
+      return request('/interest-history' + (q.toString() ? '?' + q.toString() : ''));
+    },
   },
 };

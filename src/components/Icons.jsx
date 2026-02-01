@@ -118,6 +118,17 @@ export function IconSettings({ size = navSize, style, ...rest }) {
   );
 }
 
+/** Icono porcentaje / intereses */
+export function IconPercent({ size = navSize, style, ...rest }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, ...style }} {...rest}>
+      <line x1="19" y1="5" x2="5" y2="19" />
+      <circle cx="6.5" cy="6.5" r="2.5" />
+      <circle cx="17.5" cy="17.5" r="2.5" />
+    </svg>
+  );
+}
+
 /** Estrella (cuenta principal). filled = true para rellena. */
 export function IconStar({ size = defaultSize, filled = false, style, ...rest }) {
   return (
