@@ -17,8 +17,8 @@ export default function Login() {
   const [pendingBioUnlock, setPendingBioUnlock] = useState(false);
   const bioAvailable = isWebAuthnAvailable() && hasBiometricCredential();
   const canUsePinOrBio = canLoginWithPin || bioAvailable;
-  // Si tiene PIN o biometría registrados, mostrar primero PIN/biometría (no pide email ni contraseña)
-  const [useEmailForm, setUseEmailForm] = useState(() => !canUsePinOrBio);
+  // Si tiene PIN registrado, mostrar primero PIN (no pide email). Biometría es opcional por separado.
+  const [useEmailForm, setUseEmailForm] = useState(() => !canLoginWithPin);
   const showPinOrBio = !useEmailForm && canUsePinOrBio;
 
   async function handleSubmit(e) {
@@ -93,7 +93,7 @@ export default function Login() {
           {showPinOrBio
             ? pendingBioUnlock
               ? 'Introduce tu PIN para recuperar la sesión'
-              : 'Desbloquea con PIN o biometría'
+              : 'Desbloquea con PIN'
             : 'Inicia sesión en tu cuenta'}
         </p>
 

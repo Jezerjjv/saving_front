@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { useMessage } from './context/MessageContext';
 import { api } from './api';
 import {
   IconCalendar,
@@ -19,6 +20,7 @@ import {
 } from './components/Icons.jsx';
 import { useMovimientosSidebar } from './context/MovimientosSidebarContext';
 import { useLayoutHeaderContent } from './context/LayoutHeaderContext';
+import { registerBiometric, isWebAuthnAvailable, hasBiometricCredential, clearBiometricCredential } from './utils/webauthn';
 
 const inversionesChildren = [
   { to: '/criptomonedas', label: 'Criptomonedas', Icon: IconCrypto },
@@ -54,6 +56,9 @@ const profileModalStyles = {
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem' },
   box: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', padding: '1.25rem', maxWidth: 400, width: '100%', boxShadow: '0 24px 48px rgba(0,0,0,0.3)' },
   title: { margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 600 },
+  tabs: { display: 'flex', gap: '0.25rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)' },
+  tab: { padding: '0.5rem 0.75rem', fontSize: '0.9rem', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', borderBottom: '2px solid transparent', marginBottom: '-1px' },
+  tabActive: { color: 'var(--accent)', fontWeight: 600, borderBottomColor: 'var(--accent)' },
   field: { marginBottom: '0.75rem' },
   label: { display: 'block', fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' },
   input: { width: '100%', padding: '0.5rem 0.65rem', fontSize: '1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
@@ -61,22 +66,36 @@ const profileModalStyles = {
   btnPrimary: { padding: '0.5rem 1rem', fontSize: '0.9rem', borderRadius: 'var(--radius)', border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 500 },
   btnSecondary: { padding: '0.5rem 1rem', fontSize: '0.9rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: 'pointer' },
   error: { fontSize: '0.85rem', color: 'var(--expense)', marginBottom: '0.5rem' },
+  hint: { fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 0.5rem 0' },
+  securitySubtitle: { fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text)' },
+  toggleRow: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', cursor: 'pointer' },
+  checkbox: { width: '1rem', height: '1rem' },
 };
+
+const GEAR_MODAL_TABS = [
+  { id: 'perfil', label: 'Perfil' },
+  { id: 'config', label: 'Configuración' },
+];
 
 export default function Layout() {
   const location = useLocation();
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, pinEnabled, setPin, clearPin } = useAuth();
+  const { showMessage, confirm } = useMessage();
   const { actionsRef, sidebarState } = useMovimientosSidebar();
   const actions = actionsRef?.current;
   const headerTitle = useLayoutHeaderContent();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [interestEligible, setInterestEligible] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [profileModalTab, setProfileModalTab] = useState('perfil');
   const [profileName, setProfileName] = useState('');
   const [profilePassword, setProfilePassword] = useState('');
   const [profilePasswordConfirm, setProfilePasswordConfirm] = useState('');
   const [profileError, setProfileError] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [pinForm, setPinForm] = useState({ pin: '', confirm: '' });
+  const [bioRegistering, setBioRegistering] = useState(false);
 
   useEffect(() => {
     api.interestHistory.get().then((data) => setInterestEligible(data?.eligible ?? false)).catch(() => setInterestEligible(false));
@@ -96,6 +115,8 @@ export default function Layout() {
   const closeProfileModal = () => {
     setProfileModalOpen(false);
     setProfileError('');
+    setPinModalOpen(false);
+    setPinForm({ pin: '', confirm: '' });
   };
 
   const handleProfileSubmit = async (e) => {
@@ -152,9 +173,9 @@ export default function Layout() {
                   <button
                     type="button"
                     className="sidebar-btn-profile"
-                    onClick={() => { setProfileName(user.name || ''); setProfilePassword(''); setProfilePasswordConfirm(''); setProfileError(''); setProfileModalOpen(true); }}
-                    title="Editar perfil (nombre y contraseña)"
-                    aria-label="Editar perfil"
+                    onClick={() => { setProfileName(user.name || ''); setProfilePassword(''); setProfilePasswordConfirm(''); setProfileError(''); setProfileModalTab('perfil'); setProfileModalOpen(true); }}
+                    title="Perfil y configuración"
+                    aria-label="Perfil y configuración"
                   >
                     <IconSettings size={18} />
                   </button>
@@ -324,62 +345,214 @@ export default function Layout() {
       {profileModalOpen && (
         <div style={profileModalStyles.overlay} onClick={closeProfileModal} role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
           <div style={profileModalStyles.box} onClick={(e) => e.stopPropagation()} className="modal-panel">
-            <h3 id="profile-modal-title" style={profileModalStyles.title}>Editar perfil</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 1rem 0' }}>Cambiar nombre o contraseña. El correo no se puede modificar.</p>
-            <form onSubmit={handleProfileSubmit}>
-              {profileError && <div style={profileModalStyles.error}>{profileError}</div>}
+            <h3 id="profile-modal-title" style={profileModalStyles.title}>Cuenta</h3>
+            <div style={profileModalStyles.tabs} role="tablist">
+              {GEAR_MODAL_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={profileModalTab === tab.id}
+                  style={{ ...profileModalStyles.tab, ...(profileModalTab === tab.id ? profileModalStyles.tabActive : {}) }}
+                  onClick={() => setProfileModalTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            {profileModalTab === 'perfil' && (
+              <>
+                <p style={profileModalStyles.hint}>Cambiar nombre o contraseña. El correo no se puede modificar.</p>
+                <form onSubmit={handleProfileSubmit}>
+                  {profileError && <div style={profileModalStyles.error}>{profileError}</div>}
+                  <div style={profileModalStyles.field}>
+                    <label style={profileModalStyles.label} htmlFor="profile-email">Correo</label>
+                    <input
+                      id="profile-email"
+                      type="email"
+                      value={user?.email ?? ''}
+                      disabled
+                      style={{ ...profileModalStyles.input, opacity: 0.8, cursor: 'not-allowed' }}
+                    />
+                  </div>
+                  <div style={profileModalStyles.field}>
+                    <label style={profileModalStyles.label} htmlFor="profile-name">Nombre</label>
+                    <input
+                      id="profile-name"
+                      type="text"
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      placeholder="Tu nombre"
+                      style={profileModalStyles.input}
+                      autoComplete="name"
+                    />
+                  </div>
+                  <div style={profileModalStyles.field}>
+                    <label style={profileModalStyles.label} htmlFor="profile-password">Nueva contraseña (opcional)</label>
+                    <input
+                      id="profile-password"
+                      type="password"
+                      value={profilePassword}
+                      onChange={(e) => setProfilePassword(e.target.value)}
+                      placeholder="Dejar en blanco para no cambiar"
+                      style={profileModalStyles.input}
+                      autoComplete="new-password"
+                      minLength={6}
+                    />
+                  </div>
+                  <div style={profileModalStyles.field}>
+                    <label style={profileModalStyles.label} htmlFor="profile-password-confirm">Confirmar contraseña</label>
+                    <input
+                      id="profile-password-confirm"
+                      type="password"
+                      value={profilePasswordConfirm}
+                      onChange={(e) => setProfilePasswordConfirm(e.target.value)}
+                      placeholder="Solo si cambias la contraseña"
+                      style={profileModalStyles.input}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div style={profileModalStyles.actions}>
+                    <button type="button" onClick={closeProfileModal} style={profileModalStyles.btnSecondary}>Cancelar</button>
+                    <button type="submit" disabled={profileSaving} style={profileModalStyles.btnPrimary}>
+                      {profileSaving ? 'Guardando…' : 'Guardar'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+            {profileModalTab === 'config' && (
+              <>
+                <h4 style={profileModalStyles.securitySubtitle}>Entrada con PIN</h4>
+                <label style={profileModalStyles.toggleRow}>
+                  <input
+                    type="checkbox"
+                    checked={pinEnabled}
+                    onChange={async (e) => {
+                      if (e.target.checked) setPinModalOpen(true);
+                      else {
+                        const ok = await confirm('¿Desactivar el PIN? La próxima vez que abras la app no se pedirá PIN.');
+                        if (ok) clearPin();
+                      }
+                    }}
+                    style={profileModalStyles.checkbox}
+                  />
+                  <span>Requerir PIN al abrir la app</span>
+                </label>
+                <p style={profileModalStyles.hint}>Si está activo, al abrir Saving se pedirá tu PIN antes de ver tus datos.</p>
+                <h4 style={{ ...profileModalStyles.securitySubtitle, marginTop: '1.25rem' }}>Entrada con biometría</h4>
+                <p style={profileModalStyles.hint}>Opcional. Permite desbloquear con huella o reconocimiento facial además del PIN. Si no funciona en tu dispositivo, usa solo el PIN.</p>
+                {pinEnabled && isWebAuthnAvailable() ? (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    {hasBiometricCredential() ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <span style={profileModalStyles.hint}>Biometría activa.</span>
+                        <button
+                          type="button"
+                          style={profileModalStyles.btnSecondary}
+                          onClick={async () => {
+                            const ok = await confirm('¿Quitar la biometría? Solo podrás desbloquear con PIN.');
+                            if (ok) {
+                              clearBiometricCredential();
+                              showMessage('Biometría desactivada.', 'success');
+                            }
+                          }}
+                        >
+                          Quitar biometría
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        style={profileModalStyles.btnSecondary}
+                        disabled={bioRegistering}
+                        onClick={async () => {
+                          setBioRegistering(true);
+                          try {
+                            const ok = await registerBiometric(user || {});
+                            if (ok) showMessage('Biometría registrada. Ya puedes desbloquear con huella o cara.', 'success');
+                            else showMessage('No se pudo registrar la biometría. Comprueba que tu dispositivo lo permita.', 'error');
+                          } catch {
+                            showMessage('Error al registrar biometría.', 'error');
+                          } finally {
+                            setBioRegistering(false);
+                          }
+                        }}
+                      >
+                        {bioRegistering ? 'Registrando…' : 'Registrar biometría'}
+                      </button>
+                    )}
+                  </div>
+                ) : !pinEnabled ? (
+                  <p style={profileModalStyles.hint}>Activa primero el PIN para poder usar biometría como alternativa.</p>
+                ) : null}
+                <div style={profileModalStyles.actions}>
+                  <button type="button" onClick={closeProfileModal} style={profileModalStyles.btnSecondary}>Cerrar</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      {pinModalOpen && (
+        <div style={profileModalStyles.overlay} onClick={() => setPinModalOpen(false)} role="dialog" aria-modal="true" aria-labelledby="pin-modal-title">
+          <div style={profileModalStyles.box} onClick={(e) => e.stopPropagation()} className="modal-panel">
+            <h3 id="pin-modal-title" style={profileModalStyles.title}>Establecer PIN</h3>
+            <p style={profileModalStyles.hint}>Elige un PIN numérico de 4 a 8 dígitos. Se usará para desbloquear la app al abrirla.</p>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const { pin, confirm: conf } = pinForm;
+                if (pin.length < 4 || pin.length > 8) {
+                  showMessage('El PIN debe tener entre 4 y 8 dígitos.', 'error');
+                  return;
+                }
+                if (pin !== conf) {
+                  showMessage('Los PIN no coinciden.', 'error');
+                  return;
+                }
+                try {
+                  await setPin(pin);
+                  showMessage('PIN activado. La app se bloqueará al salir o al volver a abrirla.', 'success');
+                  setPinModalOpen(false);
+                  setPinForm({ pin: '', confirm: '' });
+                } catch {
+                  showMessage('Error al guardar el PIN.', 'error');
+                }
+              }}
+            >
               <div style={profileModalStyles.field}>
-                <label style={profileModalStyles.label} htmlFor="profile-email">Correo</label>
+                <label style={profileModalStyles.label}>PIN</label>
                 <input
-                  id="profile-email"
-                  type="email"
-                  value={user?.email ?? ''}
-                  disabled
-                  style={{ ...profileModalStyles.input, opacity: 0.8, cursor: 'not-allowed' }}
-                />
-              </div>
-              <div style={profileModalStyles.field}>
-                <label style={profileModalStyles.label} htmlFor="profile-name">Nombre</label>
-                <input
-                  id="profile-name"
-                  type="text"
-                  value={profileName}
-                  onChange={(e) => setProfileName(e.target.value)}
-                  placeholder="Tu nombre"
-                  style={profileModalStyles.input}
-                  autoComplete="name"
-                />
-              </div>
-              <div style={profileModalStyles.field}>
-                <label style={profileModalStyles.label} htmlFor="profile-password">Nueva contraseña (opcional)</label>
-                <input
-                  id="profile-password"
                   type="password"
-                  value={profilePassword}
-                  onChange={(e) => setProfilePassword(e.target.value)}
-                  placeholder="Dejar en blanco para no cambiar"
-                  style={profileModalStyles.input}
-                  autoComplete="new-password"
-                  minLength={6}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  placeholder="4-8 dígitos"
+                  value={pinForm.pin}
+                  onChange={(e) => setPinForm((f) => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 8) }))}
+                  style={{ ...profileModalStyles.input, letterSpacing: '0.35em', textAlign: 'center' }}
+                  required
+                  autoFocus
                 />
               </div>
               <div style={profileModalStyles.field}>
-                <label style={profileModalStyles.label} htmlFor="profile-password-confirm">Confirmar contraseña</label>
+                <label style={profileModalStyles.label}>Repetir PIN</label>
                 <input
-                  id="profile-password-confirm"
                   type="password"
-                  value={profilePasswordConfirm}
-                  onChange={(e) => setProfilePasswordConfirm(e.target.value)}
-                  placeholder="Solo si cambias la contraseña"
-                  style={profileModalStyles.input}
-                  autoComplete="new-password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  placeholder="Repite el PIN"
+                  value={pinForm.confirm}
+                  onChange={(e) => setPinForm((f) => ({ ...f, confirm: e.target.value.replace(/\D/g, '').slice(0, 8) }))}
+                  style={{ ...profileModalStyles.input, letterSpacing: '0.35em', textAlign: 'center' }}
+                  required
                 />
               </div>
               <div style={profileModalStyles.actions}>
-                <button type="button" onClick={closeProfileModal} style={profileModalStyles.btnSecondary}>Cancelar</button>
-                <button type="submit" disabled={profileSaving} style={profileModalStyles.btnPrimary}>
-                  {profileSaving ? 'Guardando…' : 'Guardar'}
-                </button>
+                <button type="submit" style={profileModalStyles.btnPrimary}>Activar PIN</button>
+                <button type="button" onClick={() => { setPinModalOpen(false); setPinForm({ pin: '', confirm: '' }); }} style={profileModalStyles.btnSecondary}>Cancelar</button>
               </div>
             </form>
           </div>
