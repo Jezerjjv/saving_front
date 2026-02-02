@@ -570,6 +570,7 @@ export default function Transactions() {
 
       {showCaptureModal && (
         <CaptureExpenseModal
+          categories={categories}
           onExtracted={handleCaptureExtracted}
           onClose={() => setShowCaptureModal(false)}
         />

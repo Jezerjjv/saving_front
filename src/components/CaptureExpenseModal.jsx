@@ -58,12 +58,75 @@ const styles = {
     background: 'var(--surface-hover)',
     border: '2px dashed var(--accent)',
   },
+  // Estilo recibo: tarjetas claras, monto destacado
+  receiptCard: {
+    background: 'var(--bg)',
+    border: '1px solid var(--border)',
+    borderRadius: 12,
+    padding: '1rem 1.25rem',
+    marginBottom: '0.75rem',
+  },
+  receiptTitle: {
+    fontSize: '0.9rem',
+    fontWeight: 600,
+    color: 'var(--text-muted)',
+    marginBottom: '0.5rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
+  receiptAmount: {
+    fontSize: '1.75rem',
+    fontWeight: 700,
+    color: 'var(--text)',
+    marginBottom: '0.5rem',
+    letterSpacing: '-0.02em',
+  },
+  receiptRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '0.75rem',
+    fontSize: '0.9rem',
+    color: 'var(--text-muted)',
+    marginTop: '0.35rem',
+  },
+  receiptLabel: { fontWeight: 500 },
+  receiptValue: { color: 'var(--text)', fontWeight: 500 },
+  receiptInput: {
+    width: '100%',
+    maxWidth: 220,
+    padding: '0.4rem 0.5rem',
+    fontSize: '0.9rem',
+    border: '1px solid var(--border)',
+    borderRadius: 6,
+    background: 'var(--surface)',
+    color: 'var(--text)',
+    boxSizing: 'border-box',
+  },
+  receiptInputAmount: {
+    fontSize: '1.25rem',
+    fontWeight: 700,
+    maxWidth: 140,
+    textAlign: 'right',
+  },
+  receiptSelect: {
+    padding: '0.4rem 0.5rem',
+    fontSize: '0.9rem',
+    border: '1px solid var(--border)',
+    borderRadius: 6,
+    background: 'var(--surface)',
+    color: 'var(--text)',
+    minWidth: 140,
+    maxWidth: 220,
+  },
 };
 
-export default function CaptureExpenseModal({ onExtracted, onClose }) {
-  const [step, setStep] = useState('choose'); // choose | preview | processing
+export default function CaptureExpenseModal({ categories = [], onExtracted, onClose }) {
+  const [step, setStep] = useState('choose'); // choose | preview | processing | extracted
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [extractedData, setExtractedData] = useState(null);
+  const [editableData, setEditableData] = useState({ name: '', amount: '', date: '', categoryId: '' });
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const [convertingPdf, setConvertingPdf] = useState(false);
@@ -79,6 +142,7 @@ export default function CaptureExpenseModal({ onExtracted, onClose }) {
 
   const handleClose = () => {
     clearPreview();
+    setExtractedData(null);
     setStep('choose');
     setError('');
     onClose();
@@ -157,13 +221,47 @@ export default function CaptureExpenseModal({ onExtracted, onClose }) {
       const result = await extractFromReceiptImage(file, {
         onProgress: (p) => setProgress(Math.round(p * 100)),
       });
-      clearPreview();
-      handleClose();
-      onExtracted(result);
+      setExtractedData(result);
+      const suggestedId = result.categorySuggestion && Array.isArray(categories) && categories.length
+        ? (categories.find((c) => (c.name || '').toLowerCase().includes(result.categorySuggestion.toLowerCase()))?.id ?? categories[0]?.id)
+        : null;
+      setEditableData({
+        name: result.name ?? '',
+        amount: result.amount != null ? String(result.amount) : '',
+        date: result.date ?? '',
+        categoryId: suggestedId ?? (categories?.[0]?.id ?? ''),
+      });
+      setStep('extracted');
     } catch (err) {
       setError(err?.message || 'No se pudo leer la imagen. Prueba con otra foto o escribe el gasto a mano.');
       setStep('preview');
     }
+  };
+
+  const handleCreateExpense = () => {
+    const name = String(editableData.name).trim() || undefined;
+    const amountStr = String(editableData.amount).trim().replace(',', '.');
+    const amount = amountStr === '' ? undefined : (parseFloat(amountStr) || undefined);
+    const date = String(editableData.date).trim() || undefined;
+    const selectedCategory = categories.find((c) => c.id === editableData.categoryId);
+    const categorySuggestion = selectedCategory?.name ?? undefined;
+    const payload = { name, amount: Number.isFinite(amount) ? amount : undefined, date, categorySuggestion };
+    clearPreview();
+    setExtractedData(null);
+    setEditableData({ name: '', amount: '', date: '', categoryId: '' });
+    setStep('choose');
+    onExtracted(payload);
+    onClose();
+  };
+
+  const handleBackToPreview = () => {
+    setExtractedData(null);
+    setEditableData({ name: '', amount: '', date: '', categoryId: '' });
+    setStep('preview');
+  };
+
+  const setEditable = (field, value) => {
+    setEditableData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleUseImage = () => {
@@ -289,6 +387,100 @@ export default function CaptureExpenseModal({ onExtracted, onClose }) {
 
           {step === 'processing' && (
             <p style={styles.progress}>Leyendo imagen… {progress}%</p>
+          )}
+
+          {step === 'extracted' && (
+            <>
+              <p style={{ ...styles.hint, marginBottom: '0.75rem' }}>Revisa y corrige los datos si el OCR no fue preciso.</p>
+              <div style={styles.receiptCard}>
+                <div style={styles.receiptTitle}>
+                  {editableData.name ? `Recibo de ${editableData.name}` : 'Recibo de'}
+                </div>
+                <input
+                  type="text"
+                  value={editableData.name}
+                  onChange={(e) => setEditable('name', e.target.value)}
+                  placeholder="Nombre del comercio o concepto"
+                  style={{ ...styles.receiptInput, marginBottom: '0.5rem' }}
+                  aria-label="Concepto o nombre del comercio"
+                />
+                <div style={{ ...styles.receiptAmount, marginBottom: '0.5rem' }}>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={editableData.amount}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(',', '.');
+                      if (v === '' || /^\d*\.?\d{0,2}$/.test(v)) setEditable('amount', e.target.value);
+                    }}
+                    placeholder="0,00 €"
+                    style={{ ...styles.receiptInput, ...styles.receiptInputAmount, border: 'none', background: 'transparent', paddingLeft: 0 }}
+                    aria-label="Importe"
+                  />
+                </div>
+                <div style={styles.receiptRow}>
+                  <span style={styles.receiptLabel}>Fecha de pago</span>
+                  <input
+                    type="date"
+                    value={editableData.date || ''}
+                    onChange={(e) => setEditable('date', e.target.value)}
+                    style={styles.receiptInput}
+                    aria-label="Fecha de pago"
+                  />
+                </div>
+                <div style={styles.receiptRow}>
+                  <span style={styles.receiptLabel}>Categoría</span>
+                  <select
+                    value={editableData.categoryId ?? ''}
+                    onChange={(e) => setEditable('categoryId', e.target.value)}
+                    style={styles.receiptSelect}
+                    aria-label="Categoría"
+                  >
+                    <option value="">Elige categoría</option>
+                    {Array.isArray(categories) && categories.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name || 'Sin nombre'}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div style={styles.receiptCard}>
+                <div style={{ ...styles.receiptTitle, marginBottom: '0.5rem' }}>Detalle</div>
+                <div style={styles.receiptRow}>
+                  <span style={styles.receiptLabel}>Concepto</span>
+                  <input
+                    type="text"
+                    value={editableData.name}
+                    onChange={(e) => setEditable('name', e.target.value)}
+                    placeholder="—"
+                    style={{ ...styles.receiptInput, textAlign: 'right', maxWidth: '60%' }}
+                    aria-label="Concepto"
+                  />
+                </div>
+                <div style={{ ...styles.receiptRow, marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
+                  <span style={styles.receiptLabel}>Total</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={editableData.amount}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(',', '.');
+                      if (v === '' || /^\d*\.?\d{0,2}$/.test(v)) setEditable('amount', e.target.value);
+                    }}
+                    placeholder="0,00"
+                    style={{ ...styles.receiptInput, ...styles.receiptInputAmount, maxWidth: 120 }}
+                    aria-label="Total"
+                  />
+                </div>
+              </div>
+              <div style={styles.actions}>
+                <button type="button" style={{ ...styles.btn, ...styles.btnPrimary }} onClick={handleCreateExpense}>
+                  Crear gasto
+                </button>
+                <button type="button" style={styles.btn} onClick={handleBackToPreview}>
+                  Volver a la imagen
+                </button>
+              </div>
+            </>
           )}
 
           {error && <p style={styles.error}>{error}</p>}
