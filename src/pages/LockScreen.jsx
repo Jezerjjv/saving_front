@@ -62,7 +62,7 @@ export default function LockScreen() {
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
           <IconLogo size={48} style={{ color: 'var(--accent)' }} />
         </div>
-        <h1 className="lock-title">Desbloquear Saving</h1>
+        <h1 className="lock-title">Desbloquear</h1>
         <p className="lock-subtitle">
           {user?.name || user?.email ? `Hola, ${user.name || user.email}` : onlyBiometric ? 'Usa biometría para continuar' : 'Introduce tu PIN para continuar'}
         </p>

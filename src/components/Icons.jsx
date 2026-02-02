@@ -191,15 +191,18 @@ export function IconMenu({ size = defaultSize, style, ...rest }) {
   );
 }
 
-/** Logo app: alcancía (ahorros / finanzas). */
+/**
+ * Logo de la app (B + lockSpend). Usa favicon1.svg; el favicon de pestaña es favicon.svg.
+ */
 export function IconLogo({ size = 36, style, ...rest }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, ...style }} {...rest}>
-      <ellipse cx="12" cy="14" rx="8" ry="5" />
-      <rect x="11" y="4" width="2" height="5" rx="0.5" />
-      <circle cx="12" cy="10" r="1.5" fill="currentColor" />
-      <path d="M7 18v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1" />
-    </svg>
+    <img
+      src="/favicon1.svg"
+      alt="lockSpend"
+      height={size}
+      style={{ flexShrink: 0, display: 'block', width: 'auto', maxWidth: '100%', ...style }}
+      {...rest}
+    />
   );
 }
 

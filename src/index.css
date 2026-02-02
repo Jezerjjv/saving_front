@@ -170,6 +170,7 @@ body {
   gap: 0.75rem;
   margin-bottom: 1.75rem;
 }
+.auth-logo img,
 .auth-logo svg {
   color: var(--accent);
 }

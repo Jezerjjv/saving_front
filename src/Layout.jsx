@@ -201,9 +201,8 @@ export default function Layout() {
                   </button>
                 </div>
               )}
-              <Link to="/movimientos" className="sidebar-logo" onClick={onNavClick} aria-label="Saving">
-                <IconLogo size={32} style={{ color: 'var(--accent)' }} />
-                <span className="sidebar-logo-text">Saving</span>
+              <Link to="/movimientos" className="sidebar-logo" onClick={onNavClick} aria-label="lockSpend">
+                <IconLogo size={32} />
               </Link>
             </div>
             <button
@@ -482,7 +481,13 @@ export default function Layout() {
                             confirm({
                               title: 'Quitar biometría',
                               message: '¿Quitar la biometría?',
-                              onConfirm: () => {
+                              onConfirm: async () => {
+                                try {
+                                  const updated = await api.auth.updateProfile({ bio_enabled: false });
+                                  updateUser(updated);
+                                } catch {
+                                  // Si falla la API, quitamos igual en este dispositivo
+                                }
                                 clearBiometricCredential(user?.id);
                                 unlock();
                                 showMessage('Biometría desactivada.', 'success');
@@ -502,8 +507,17 @@ export default function Layout() {
                           setBioRegistering(true);
                           try {
                             const ok = await registerBiometric(user || {});
-                            if (ok) showMessage('Biometría registrada. Ya puedes desbloquear con huella o cara.', 'success');
-                            else showMessage('No se pudo registrar la biometría. Comprueba que tu dispositivo lo permita.', 'error');
+                            if (ok) {
+                              try {
+                                const updated = await api.auth.updateProfile({ bio_enabled: true });
+                                updateUser(updated);
+                              } catch {
+                                // Si falla la API, la biometría ya está activa en este dispositivo
+                              }
+                              showMessage('Biometría registrada. Ya puedes desbloquear con huella o cara.', 'success');
+                            } else {
+                              showMessage('No se pudo registrar la biometría. Comprueba que tu dispositivo lo permita.', 'error');
+                            }
                           } catch {
                             showMessage('Error al registrar biometría.', 'error');
                           } finally {

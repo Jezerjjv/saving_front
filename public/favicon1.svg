@@ -1,0 +1,45 @@
+<svg width="620" height="120" viewBox="0 0 620 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bsGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#4DAFFF"/>
+      <stop offset="100%" stop-color="#4DFFB3"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(105, 0)">
+    <!-- B estilizada (más pegada al texto) -->
+    <path d="
+      M20 20
+      H60
+      C85 20 100 35 100 55
+      C100 68 92 78 80 82
+      C95 86 108 96 108 112
+      C108 135 90 150 60 150
+      H20
+      Z
+
+      M40 38
+      V72
+      H58
+      C68 72 75 65 75 55
+      C75 45 68 38 58 38
+      Z
+
+      M40 88
+      V118
+      H60
+      C72 118 80 125 80 115
+      C80 100 72 88 60 88
+      Z
+    " transform="scale(0.6)" fill="url(#bsGradient)"/>
+
+    <!-- lock + S (mismo tamaño que la B) + pend; baseline alineada con la base de la B (y=90) -->
+    <text x="68" y="90"
+          font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+          font-size="64"
+          font-weight="600"
+          fill="#E6EEF5">
+      lock<tspan fill="url(#bsGradient)" font-size="100">S</tspan>pend
+    </text>
+  </g>
+</svg>

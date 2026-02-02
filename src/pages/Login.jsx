@@ -87,7 +87,6 @@ export default function Login() {
         <div className="auth-logo">
           <IconLogo size={48} />
         </div>
-        <h1 className="auth-title">Saving</h1>
         <p className="auth-subtitle">
           {showPinOrBio
             ? pendingBioUnlock
