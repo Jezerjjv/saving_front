@@ -155,6 +155,12 @@ export const api = {
     holdings: {
       list: () => request('/stocks/holdings'),
       get: (id) => request(`/stocks/holdings/${id}`),
+      dailyHistory: (id, year, month) => {
+        const q = new URLSearchParams();
+        if (year != null) q.set('year', year);
+        if (month != null) q.set('month', month);
+        return request(`/stocks/holdings/${id}/daily-history` + (q.toString() ? '?' + q.toString() : ''));
+      },
       create: (body) => request('/stocks/holdings', { method: 'POST', body: JSON.stringify(body) }),
       update: (id, body) => request(`/stocks/holdings/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
       delete: (id) => request(`/stocks/holdings/${id}`, { method: 'DELETE' }),

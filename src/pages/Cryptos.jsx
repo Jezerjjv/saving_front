@@ -4,6 +4,7 @@ import { useMessage } from '../context/MessageContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
 import Loader from '../components/Loader';
+import EvolutionChart from '../components/EvolutionChart';
 import { IconEdit, IconTrash, IconHistory } from '../components/Icons.jsx';
 
 const CRYPTO_SYMBOLS = [
@@ -642,18 +643,46 @@ export default function Cryptos() {
               Historial G/P diario — {getSymbolLabel(historyHolding.symbol)}
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-              Cada día a las 00:00 se guarda el cierre. La G/P del día es la diferencia con el cierre del día anterior. &quot;Hoy&quot; es la G/P acumulada desde el último cierre.
+              Una fila por día: beneficio (G/P) en USD y EUR al cierre. Diferencia = cambio respecto al día anterior (solo si hay datos de ese día). Hoy varía con el precio actual.
             </p>
             {historyLoading ? (
               <Loader />
             ) : (
-              <div style={styles.tableCard}>
+              <>
+                {(() => {
+                  const h = historyHolding;
+                  const isEur = h.currency === 'EUR';
+                  const p = prices[h.symbol];
+                  const investedEur = isEur ? h.amountInvested : h.amountInvested * rate;
+                  const investedUsd = isEur ? h.amountInvested / rate : h.amountInvested;
+                  const currentEur = p ? h.amountCoins * p.priceEur : investedEur;
+                  const currentUsd = p ? h.amountCoins * p.priceUsd : investedUsd;
+                  const todayStr = new Date().toISOString().slice(0, 10);
+                  const chartData = [
+                    ...historyList.map((row) => ({
+                      date: row.date,
+                      value: isEur ? investedEur + row.gainLossEur : investedUsd + row.gainLossUsd,
+                    })),
+                    ...(historyList.length === 0 || historyList[historyList.length - 1]?.date !== todayStr
+                      ? [{ date: todayStr, value: isEur ? currentEur : currentUsd }]
+                      : []),
+                  ].sort((a, b) => a.date.localeCompare(b.date));
+                  return chartData.length > 0 ? (
+                    <EvolutionChart
+                      data={chartData}
+                      formatValue={isEur ? fmtEur : fmtUsd}
+                      currencyLabel={isEur ? '€' : 'USD'}
+                    />
+                  ) : null;
+                })()}
+                <div style={styles.tableCard}>
                 <table style={styles.table}>
                   <thead>
                     <tr>
-                      <th style={styles.th}>Fecha</th>
-                      <th style={styles.th}>G/P día (USD)</th>
-                      <th style={styles.th}>G/P día (EUR)</th>
+                      <th style={styles.th}>Día</th>
+                      <th style={styles.th}>Precio USD</th>
+                      <th style={styles.th}>Precio EUR</th>
+                      <th style={styles.th}>Diferencia</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -661,19 +690,21 @@ export default function Cryptos() {
                       const h = historyHolding;
                       const isEur = h.currency === 'EUR';
                       const p = prices[h.symbol];
-                      const currentEur = p ? h.amountCoins * p.priceEur : 0;
-                      const currentUsd = p ? h.amountCoins * p.priceUsd : 0;
                       const investedEur = isEur ? h.amountInvested : h.amountInvested * rate;
                       const investedUsd = isEur ? h.amountInvested / rate : h.amountInvested;
-                      const currentGlEur = currentEur - investedEur;
-                      const currentGlUsd = currentUsd - investedUsd;
+                      const todayStr = new Date().toISOString().slice(0, 10);
                       const yesterday = new Date();
                       yesterday.setDate(yesterday.getDate() - 1);
                       const yesterdayStr = yesterday.toISOString().slice(0, 10);
-                      const prevRow = historyList.find((r) => r.date === yesterdayStr);
-                      const prevEur = prevRow ? prevRow.gainLossEur : 0;
-                      const prevUsd = prevRow ? prevRow.gainLossUsd : 0;
-                      const dailyToday = isEur ? (currentGlEur - prevEur) : (currentGlUsd - prevUsd);
+                      const prevRow = historyList.find((r) => r.date === yesterdayStr)
+                        || (historyList.length > 0 && historyList[0].date < todayStr ? historyList[0] : null);
+                      const glHoy = isEur
+                        ? (p ? h.amountCoins * p.priceEur - investedEur : 0)
+                        : (p ? h.amountCoins * p.priceUsd - investedUsd : 0);
+                      const precioUsdHoy = isEur ? glHoy / rate : glHoy;
+                      const precioEurHoy = isEur ? glHoy : glHoy * rate;
+                      const prevGl = prevRow ? (isEur ? prevRow.gainLossEur : prevRow.gainLossUsd) : 0;
+                      const dailyToday = glHoy - prevGl;
                       const dailyUsdToday = isEur ? dailyToday / rate : dailyToday;
                       const dailyEurToday = isEur ? dailyToday : dailyToday * rate;
                       const signToday = dailyToday >= 0;
@@ -681,18 +712,21 @@ export default function Cryptos() {
                         <>
                           <tr style={styles.tr}>
                             <td style={styles.td}>Hoy</td>
+                            <td style={styles.td}>{precioUsdHoy >= 0 ? '+' : ''}{fmtUsd(precioUsdHoy)}</td>
+                            <td style={styles.td}>{precioEurHoy >= 0 ? '+' : ''}{fmtEur(precioEurHoy)}</td>
                             <td style={styles.td}>
-                              <span style={signToday ? styles.amountPositive : styles.amountNegative}>
-                                {signToday ? '+' : ''}{fmtUsd(dailyUsdToday)}
-                              </span>
-                            </td>
-                            <td style={styles.td}>
-                              <span style={signToday ? styles.amountPositive : styles.amountNegative}>
-                                {signToday ? '+' : ''}{fmtEur(dailyEurToday)}
-                              </span>
+                              {prevRow ? (
+                                <span style={signToday ? styles.amountPositive : styles.amountNegative}>
+                                  {signToday ? '+' : ''}{fmtUsd(dailyUsdToday)} / {signToday ? '+' : ''}{fmtEur(dailyEurToday)}
+                                </span>
+                              ) : '—'}
                             </td>
                           </tr>
-                          {historyList.map((row) => {
+                          {historyList.map((row, index) => {
+                            const hasPrevDay = index < historyList.length - 1;
+                            const gl = isEur ? row.gainLossEur : row.gainLossUsd;
+                            const precioUsd = isEur ? gl / rate : gl;
+                            const precioEur = isEur ? gl : gl * rate;
                             const daily = isEur ? row.dailyEur : row.dailyUsd;
                             const dailyUsd = isEur ? daily / rate : daily;
                             const dailyEur = isEur ? daily : daily * rate;
@@ -700,15 +734,14 @@ export default function Cryptos() {
                             return (
                               <tr key={row.date} style={styles.tr}>
                                 <td style={styles.td}>{row.date}</td>
+                                <td style={styles.td}>{precioUsd >= 0 ? '+' : ''}{fmtUsd(precioUsd)}</td>
+                                <td style={styles.td}>{precioEur >= 0 ? '+' : ''}{fmtEur(precioEur)}</td>
                                 <td style={styles.td}>
-                                  <span style={sign ? styles.amountPositive : styles.amountNegative}>
-                                    {sign ? '+' : ''}{fmtUsd(dailyUsd)}
-                                  </span>
-                                </td>
-                                <td style={styles.td}>
-                                  <span style={sign ? styles.amountPositive : styles.amountNegative}>
-                                    {sign ? '+' : ''}{fmtEur(dailyEur)}
-                                  </span>
+                                  {hasPrevDay ? (
+                                    <span style={sign ? styles.amountPositive : styles.amountNegative}>
+                                      {sign ? '+' : ''}{fmtUsd(dailyUsd)} / {sign ? '+' : ''}{fmtEur(dailyEur)}
+                                    </span>
+                                  ) : '—'}
                                 </td>
                               </tr>
                             );
@@ -722,6 +755,7 @@ export default function Cryptos() {
                   <p style={styles.tableEmpty}>Aún no hay cierres diarios para esta posición. Se registrarán al pasar las 00:00.</p>
                 )}
               </div>
+              </>
             )}
             <div style={{ ...styles.modalActions, borderTop: 'none', paddingTop: '0.5rem' }}>
               <button type="button" onClick={closeHistory} style={styles.btnSecondary}>Cerrar</button>

@@ -16,6 +16,7 @@ import {
   IconPercent,
   IconCrypto,
   IconStocks,
+  IconCalculator,
   IconLogout,
   IconCamera,
 } from './components/Icons.jsx';
@@ -35,6 +36,7 @@ const navBase = [
   { to: '/cuentas', label: 'Cuentas', Icon: IconCreditCard },
   { to: '/transferencias', label: 'Transferencias', Icon: IconArrowLeftRight },
   { type: 'group', label: 'Inversiones', Icon: IconStocks, defaultTo: '/criptomonedas', children: inversionesChildren },
+  { to: '/calculadora', label: 'Calculadora', Icon: IconCalculator },
   { to: '/configuracion', label: 'Config', Icon: IconSettings },
 ];
 

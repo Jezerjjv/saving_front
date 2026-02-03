@@ -9,6 +9,73 @@ import { IconEdit, IconTrash, IconHistory } from '../components/Icons.jsx';
 const TAB_POSICIONES = 'posiciones';
 const TAB_HISTORIAL = 'historial';
 
+/** Horario NYSE/NASDAQ: 9:30–16:00 Eastern, lun–vie. Devuelve si el mercado está abierto. */
+function getUSMarketStatus() {
+  try {
+    const now = new Date();
+    const etHour = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', hour12: false }).format(now), 10);
+    const etMin = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', minute: '2-digit' }).format(now), 10);
+    const etWeekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short' }).format(now);
+    const isWeekend = etWeekday === 'Sat' || etWeekday === 'Sun';
+    const mins = etHour * 60 + etMin;
+    const openMins = 9 * 60 + 30;
+    const closeMins = 16 * 60;
+    return !isWeekend && mins >= openMins && mins < closeMins;
+  } catch {
+    return false;
+  }
+}
+
+const ET_DAY = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+
+/** Próxima apertura 9:30 ET (lun–vie): devuelve la fecha en ET de ese momento para calcular diff real. */
+function getNextOpenCountdown() {
+  try {
+    const now = new Date();
+    const etWeekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short' }).format(now);
+    const etHour = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', hour12: false }).format(now), 10);
+    const etMin = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', minute: '2-digit' }).format(now), 10);
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+    const getPart = (p) => parts.find((x) => x.type === p)?.value;
+    const y = parseInt(getPart('year'), 10);
+    const mo = parseInt(getPart('month'), 10) - 1;
+    const d = parseInt(getPart('day'), 10);
+    const dayNum = ET_DAY[etWeekday] ?? 0;
+    const openAtMins = 9 * 60 + 30;
+    const closeAtMins = 16 * 60;
+    const currentMins = etHour * 60 + etMin;
+    let daysToAdd = 0;
+    if (dayNum <= 4 && currentMins < openAtMins) {
+      daysToAdd = 0;
+    } else if (dayNum <= 4 && currentMins >= closeAtMins) {
+      daysToAdd = dayNum === 4 ? 3 : 1;
+    } else if (dayNum === 5) {
+      daysToAdd = 2;
+    } else {
+      daysToAdd = 1;
+    }
+    const ref = new Date(Date.UTC(y, mo, d, 12, 0, 0));
+    ref.setUTCDate(ref.getUTCDate() + daysToAdd);
+    const y2 = ref.getUTCFullYear();
+    const mo2 = ref.getUTCMonth();
+    const d2 = ref.getUTCDate();
+    const nextOpen = new Date(Date.UTC(y2, mo2, d2, 14, 30, 0));
+    const diffMs = nextOpen.getTime() - now.getTime();
+    if (diffMs <= 0) return null;
+    const totalMins = Math.floor(diffMs / 60000);
+    const dDisplay = Math.floor(totalMins / 1440);
+    const remainderMins = totalMins % 1440;
+    const hDisplay = Math.floor(remainderMins / 60);
+    const mDisplay = remainderMins % 60;
+    if (dDisplay > 0) {
+      return `Abre en ${dDisplay}d ${hDisplay}h ${mDisplay}m`;
+    }
+    return `Abre en ${hDisplay}h ${mDisplay}m`;
+  } catch {
+    return null;
+  }
+}
+
 const styles = {
   tabs: { display: 'flex', gap: 0, marginBottom: '1rem', borderBottom: '1px solid var(--border)' },
   tab: { padding: '0.5rem 1rem', background: 'transparent', border: 'none', borderBottom: '3px solid transparent', color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.95rem', cursor: 'pointer' },
@@ -51,6 +118,28 @@ const styles = {
   amountPositive: { color: 'var(--income)', fontWeight: 500 },
   amountNegative: { color: 'var(--expense)', fontWeight: 500 },
   portfolioList: { display: 'flex', flexDirection: 'column', gap: 0, maxWidth: 720 },
+  portfolioListWrap: { position: 'relative', maxWidth: 720 },
+  marketClosedWatermark: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
+    zIndex: 1,
+    overflow: 'hidden',
+  },
+  marketClosedText: {
+    color: 'var(--text-muted)',
+    fontSize: 'clamp(2rem, 8vw, 3.5rem)',
+    fontWeight: 300,
+    letterSpacing: '0.2em',
+    textTransform: 'uppercase',
+    opacity: 0.12,
+    transform: 'rotate(-18deg)',
+    whiteSpace: 'nowrap',
+    userSelect: 'none',
+  },
   portfolioRow: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', padding: '0.9rem 1rem',
     background: 'var(--surface)', border: '1px solid var(--border)', borderBottom: 'none',
@@ -91,6 +180,37 @@ export default function Acciones() {
   const [form, setForm] = useState({ symbol: '', amountInvested: '', priceBought: '', currency: 'USD' });
   const [detailHolding, setDetailHolding] = useState(null);
   const [tab, setTab] = useState(TAB_POSICIONES);
+  const [usMarketOpen, setUsMarketOpen] = useState(getUSMarketStatus());
+  const [countdown, setCountdown] = useState(getNextOpenCountdown());
+  const [historyHolding, setHistoryHolding] = useState(null);
+  const [historyList, setHistoryList] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const historialYear = new Date().getFullYear();
+  const historialMonth = new Date().getMonth() + 1;
+
+  useEffect(() => {
+    const tick = () => {
+      setUsMarketOpen(getUSMarketStatus());
+      setCountdown(getNextOpenCountdown());
+    };
+    tick();
+    const t = setInterval(tick, 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    if (!historyHolding) {
+      setHistoryList([]);
+      return;
+    }
+    setHistoryLoading(true);
+    api.stocks.holdings.dailyHistory(historyHolding.id, historialYear, historialMonth)
+      .then((list) => setHistoryList(Array.isArray(list) ? list : []))
+      .catch(() => setHistoryList([]))
+      .finally(() => setHistoryLoading(false));
+  }, [historyHolding?.id, historialYear, historialMonth]);
+
+  const closeHistory = () => setHistoryHolding(null);
 
   const loadHoldings = () => {
     setLoading(true);
@@ -262,6 +382,16 @@ export default function Acciones() {
             <h2 style={styles.subtitle}>Posiciones</h2>
             <p style={styles.hint}>
               Los precios actuales se obtienen de Yahoo Finance; si hay límite de peticiones se usa el último valor guardado. Pulsa &quot;Refrescar precios&quot; para actualizar.
+              {!usMarketOpen && holdings.length > 0 && (
+                <span style={{ display: 'block', marginTop: '0.35rem' }}>
+                  Mercado US cerrado (9:30–16:00 ET, lun–vie): los precios son de último cierre.
+                  {countdown && (
+                    <span style={{ display: 'block', marginTop: '0.25rem', fontWeight: 600, color: 'var(--accent)' }}>
+                      {countdown}
+                    </span>
+                  )}
+                </span>
+              )}
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -276,24 +406,26 @@ export default function Acciones() {
           </div>
         </div>
 
-        {holdings.length > 0 && (
-          <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', maxWidth: 360 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Invertido (aprox. {summaryLabel})</span>
-              <span style={{ fontWeight: 600 }}>{summaryFmt(summaryTotalInvested)}</span>
-            </div>
+        {holdings.length === 0 ? (
+          <div style={{ ...styles.tableCard, padding: '1.5rem' }}>
+            <p style={styles.tableEmpty}>
+              No hay posiciones. Haz clic en &quot;+ Añadir&quot; e indica el símbolo (ej. SPY, AAPL), dinero invertido y precio al que compraste.
+            </p>
           </div>
-        )}
-
-        <div style={styles.portfolioList}>
-          {holdings.length === 0 ? (
-            <div style={{ ...styles.tableCard, padding: '1.5rem' }}>
-              <p style={styles.tableEmpty}>
-                No hay posiciones. Haz clic en &quot;+ Añadir&quot; e indica el símbolo (ej. SPY, AAPL), dinero invertido y precio al que compraste.
-              </p>
+        ) : (
+          <div style={styles.portfolioListWrap}>
+            {!usMarketOpen && (
+              <div style={styles.marketClosedWatermark} aria-hidden>
+                <span style={styles.marketClosedText}>Mercado cerrado</span>
+              </div>
+            )}
+            <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', maxWidth: 360 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Invertido (aprox. {summaryLabel})</span>
+                <span style={{ fontWeight: 600 }}>{summaryFmt(summaryTotalInvested)}</span>
+              </div>
             </div>
-          ) : (
-            <>
+            <div style={styles.portfolioList}>
               {holdings.map((h, index) => {
                 const p = prices[h.symbol];
                 const currentEur = p ? h.amountShares * p.priceEur : null;
@@ -345,9 +477,9 @@ export default function Acciones() {
                   <span style={{ marginLeft: '0.35rem' }}>{totalGainLossEur >= 0 ? '+' : ''}{fmtEur(totalGainLossEur)}</span>
                 </span>
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </section>
       )}
 
@@ -355,10 +487,10 @@ export default function Acciones() {
       <section style={styles.section}>
         <h2 style={styles.subtitle}>Historial de cierres diarios</h2>
         <p style={styles.hint}>
-          Cada día a las 00:00 se registra el cierre del portfolio: valor total y ganancia o pérdida del día.
+          Cada día a las 00:00 se guarda el cierre de cada posición. Abre una posición y pulsa &quot;Histórico&quot; para ver su historial G/P día a día.
         </p>
         <div style={styles.tableCard}>
-          <p style={{ ...styles.tableEmpty, padding: '1.5rem' }}>No hay cierres para el periodo seleccionado. (El historial para acciones no está disponible aún.)</p>
+          <p style={{ ...styles.tableEmpty, padding: '1.5rem' }}>Abre una posición desde la pestaña Posiciones y usa el botón Histórico para ver su historial diario.</p>
         </div>
       </section>
       )}
@@ -417,9 +549,8 @@ export default function Acciones() {
               <div style={styles.detailActions}>
                 <button
                   type="button"
-                  disabled
-                  style={{ ...styles.detailBtn, background: 'var(--bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', cursor: 'not-allowed', opacity: 0.8 }}
-                  title="No disponible aún para acciones"
+                  style={{ ...styles.detailBtn, background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                  onClick={() => { setDetailHolding(null); setHistoryHolding(h); }}
                 >
                   <IconHistory size={18} /> Histórico
                 </button>
@@ -437,6 +568,106 @@ export default function Acciones() {
           </div>
         );
       })()}
+
+      {historyHolding && (
+        <div style={styles.modalOverlay} onClick={closeHistory} role="dialog" aria-modal="true" aria-labelledby="stocks-history-title">
+          <div style={{ ...styles.modalBox, maxWidth: 520 }} onClick={(e) => e.stopPropagation()} className="modal-panel">
+            <h3 id="stocks-history-title" style={styles.modalTitle}>
+              Historial G/P diario — {historyHolding.currency === 'USDT' ? `${historyHolding.symbol}/USDT` : (historyHolding.currency === 'USD' ? `${historyHolding.symbol}/USD` : `${historyHolding.symbol}/EUR`)}
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+              Una fila por día: beneficio (G/P) en USD y EUR al cierre. Diferencia = cambio respecto al día anterior. Hoy varía con el precio actual. Se registra cada día a las 00:00.
+            </p>
+            {historyLoading ? (
+              <Loader />
+            ) : (
+              <div style={styles.tableCard}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Día</th>
+                      <th style={styles.th}>Precio USD</th>
+                      <th style={styles.th}>Precio EUR</th>
+                      <th style={styles.th}>Diferencia</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const h = historyHolding;
+                      const isEur = h.currency === 'EUR';
+                      const p = prices[h.symbol];
+                      const investedEur = isEur ? h.amountInvested : h.amountInvested * rate;
+                      const investedUsd = isEur ? h.amountInvested / rate : h.amountInvested;
+                      const todayStr = new Date().toISOString().slice(0, 10);
+                      const yesterday = new Date();
+                      yesterday.setDate(yesterday.getDate() - 1);
+                      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+                      const prevRow = historyList.find((r) => r.date === yesterdayStr)
+                        || (historyList.length > 0 && historyList[0].date < todayStr ? historyList[0] : null);
+                      const glHoy = isEur
+                        ? (p ? h.amountShares * p.priceEur - investedEur : 0)
+                        : (p ? h.amountShares * p.priceUsd - investedUsd : 0);
+                      const precioUsdHoy = isEur ? glHoy / rate : glHoy;
+                      const precioEurHoy = isEur ? glHoy : glHoy * rate;
+                      const prevGl = prevRow ? (isEur ? prevRow.gainLossEur : prevRow.gainLossUsd) : 0;
+                      const dailyToday = glHoy - prevGl;
+                      const dailyUsdToday = isEur ? dailyToday / rate : dailyToday;
+                      const dailyEurToday = isEur ? dailyToday : dailyToday * rate;
+                      const signToday = dailyToday >= 0;
+                      return (
+                        <>
+                          <tr style={styles.tr}>
+                            <td style={styles.td}>Hoy</td>
+                            <td style={styles.td}>{precioUsdHoy >= 0 ? '+' : ''}{fmtUsd(precioUsdHoy)}</td>
+                            <td style={styles.td}>{precioEurHoy >= 0 ? '+' : ''}{fmtEur(precioEurHoy)}</td>
+                            <td style={styles.td}>
+                              {prevRow ? (
+                                <span style={signToday ? styles.amountPositive : styles.amountNegative}>
+                                  {signToday ? '+' : ''}{fmtUsd(dailyUsdToday)} / {signToday ? '+' : ''}{fmtEur(dailyEurToday)}
+                                </span>
+                              ) : '—'}
+                            </td>
+                          </tr>
+                          {historyList.map((row, index) => {
+                            const hasPrevDay = index < historyList.length - 1;
+                            const gl = isEur ? row.gainLossEur : row.gainLossUsd;
+                            const precioUsd = isEur ? gl / rate : gl;
+                            const precioEur = isEur ? gl : gl * rate;
+                            const daily = isEur ? row.dailyEur : row.dailyUsd;
+                            const dailyUsd = isEur ? daily / rate : daily;
+                            const dailyEur = isEur ? daily : daily * rate;
+                            const sign = daily >= 0;
+                            return (
+                              <tr key={row.date} style={styles.tr}>
+                                <td style={styles.td}>{row.date}</td>
+                                <td style={styles.td}>{precioUsd >= 0 ? '+' : ''}{fmtUsd(precioUsd)}</td>
+                                <td style={styles.td}>{precioEur >= 0 ? '+' : ''}{fmtEur(precioEur)}</td>
+                                <td style={styles.td}>
+                                  {hasPrevDay ? (
+                                    <span style={sign ? styles.amountPositive : styles.amountNegative}>
+                                      {sign ? '+' : ''}{fmtUsd(dailyUsd)} / {sign ? '+' : ''}{fmtEur(dailyEur)}
+                                    </span>
+                                  ) : '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+                {historyList.length === 0 && !historyLoading && (
+                  <p style={styles.tableEmpty}>Aún no hay cierres diarios para esta posición. Se registrarán cada día a las 00:00.</p>
+                )}
+              </div>
+            )}
+            <div style={{ ...styles.modalActions, borderTop: 'none', paddingTop: '0.5rem' }}>
+              <button type="button" onClick={closeHistory} style={styles.btnSecondary}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalOpen && (
         <div style={styles.modalOverlay} onClick={closeModal} role="dialog" aria-modal="true" aria-labelledby="stocks-modal-title">

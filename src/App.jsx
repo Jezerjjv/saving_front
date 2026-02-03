@@ -8,6 +8,7 @@ import Transfers from './pages/Transfers';
 import Cryptos from './pages/Cryptos';
 import Acciones from './pages/Acciones';
 import Intereses from './pages/Intereses';
+import Calculadora from './pages/Calculadora';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -46,6 +47,7 @@ function AppRoutes() {
             <Route path="criptomonedas" element={<Cryptos />} />
             <Route path="acciones" element={<Acciones />} />
             <Route path="intereses" element={<Intereses />} />
+            <Route path="calculadora" element={<Calculadora />} />
             <Route path="configuracion" element={<Settings />} />
           </Route>
         </Routes>
