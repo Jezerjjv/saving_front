@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react'; 
 import { extractFromReceiptImage } from '../utils/receiptOcr';
 import { pdfFirstPageToImage } from '../utils/pdfToImage';
 import { IconCamera, IconImageUpload } from './Icons.jsx';
