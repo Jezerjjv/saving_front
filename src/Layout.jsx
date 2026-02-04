@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { useMessage } from './context/MessageContext';
 import { api } from './api';
 import {
+  IconHome,
   IconCalendar,
   IconCreditCard,
   IconFileText,
@@ -19,6 +20,7 @@ import {
   IconCalculator,
   IconLogout,
   IconCamera,
+  IconUser,
 } from './components/Icons.jsx';
 import { useMovimientosSidebar } from './context/MovimientosSidebarContext';
 import { useLayoutHeaderContent } from './context/LayoutHeaderContext';
@@ -31,6 +33,7 @@ const inversionesChildren = [
 ];
 
 const navBase = [
+  { to: '/', label: 'Inicio', Icon: IconHome },
   { to: '/movimientos', label: 'Movimientos', Icon: IconFileText },
   { to: '/calendario', label: 'Calendario', Icon: IconCalendar },
   { to: '/cuentas', label: 'Cuentas', Icon: IconCreditCard },
@@ -48,6 +51,7 @@ const MAIN_TABS = [
 const DEFS_LABEL = 'Rápidos y Fijos';
 
 function isActive(path, location, item) {
+  if (path === '/') return location.pathname === '/' || location.pathname === '/inicio';
   if (path === '/movimientos') return location.pathname === '/movimientos' || location.pathname === '/rapidos-y-fijos';
   if (item?.type === 'group' && item.children) {
     return item.children.some((c) => c.to === location.pathname);
@@ -100,10 +104,26 @@ export default function Layout() {
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [pinForm, setPinForm] = useState({ pin: '', confirm: '' });
   const [bioRegistering, setBioRegistering] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   useEffect(() => {
     api.interestHistory.get().then((data) => setInterestEligible(data?.eligible ?? false)).catch(() => setInterestEligible(false));
   }, []);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setUserMenuOpen(false);
+    };
+    if (userMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [userMenuOpen]);
 
   const inversionesChildrenFiltered = interestEligible
     ? inversionesChildren
@@ -170,42 +190,64 @@ export default function Layout() {
           <div className="sidebar-header">
             <div className="sidebar-header-left">
               {user && (
-                <div className="sidebar-user-block">
-                  <span className="sidebar-user-name" title={user.email}>
-                    {user.name?.trim() || user.email}
-                  </span>
-                  <button
-                    type="button"
-                    className="sidebar-btn-profile"
-                    onClick={() => { setProfileName(user.name || ''); setProfilePassword(''); setProfilePasswordConfirm(''); setProfileError(''); setProfileModalTab('perfil'); setProfileModalOpen(true); }}
-                    title="Perfil y configuración"
-                    aria-label="Perfil y configuración"
-                  >
-                    <IconSettings size={18} />
-                  </button>
-                  <button
-                    type="button"
-                    className="sidebar-btn-disconnect"
-                    onClick={() => {
-                      if (pinEnabled || hasBiometricCredential(user?.id)) {
-                        lock();
-                        onNavClick();
-                      } else {
-                        logout();
-                        onNavClick();
-                      }
-                    }}
-                    title={pinEnabled || hasBiometricCredential() ? 'Bloquear (volverás a entrar con PIN o biometría)' : 'Cerrar sesión'}
-                    aria-label="Desconectar"
-                  >
-                    <IconLogout size={18} />
-                    <span>Desconectar</span>
-                  </button>
+                <div className="sidebar-user-block" ref={userMenuRef}>
+                  <div className="sidebar-user-pill">
+                    <span className="sidebar-user-pill-icon" aria-hidden="true">
+                      <IconUser size={20} />
+                    </span>
+                    <span className="sidebar-user-pill-greeting">Hola, {user.name?.trim() || user.email}</span>
+                    <button
+                      type="button"
+                      className="sidebar-btn-gear"
+                      onClick={() => setUserMenuOpen((o) => !o)}
+                      title="Opciones de cuenta"
+                      aria-label="Opciones de cuenta"
+                      aria-expanded={userMenuOpen}
+                      aria-haspopup="true"
+                    >
+                      <IconSettings size={18} />
+                    </button>
+                  </div>
+                  {userMenuOpen && (
+                    <div className="sidebar-user-dropdown" role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="sidebar-user-dropdown-item"
+                        onClick={() => {
+                          setProfileName(user.name || '');
+                          setProfilePassword('');
+                          setProfilePasswordConfirm('');
+                          setProfileError('');
+                          setProfileModalTab('perfil');
+                          setProfileModalOpen(true);
+                          setUserMenuOpen(false);
+                          onNavClick();
+                        }}
+                      >
+                        Mi cuenta
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="sidebar-user-dropdown-item"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          if (pinEnabled || hasBiometricCredential(user?.id)) {
+                            lock();
+                            onNavClick();
+                          } else {
+                            logout();
+                            onNavClick();
+                          }
+                        }}
+                      >
+                        Cerrar sesión
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
-              <Link to="/movimientos" className="sidebar-logo" onClick={onNavClick} aria-label="lockSpend">
-                <IconLogo size={32} />
-              </Link>
             </div>
             <button
               type="button"
@@ -364,7 +406,7 @@ export default function Layout() {
           <Outlet />
         </div>
         <footer className="layout-footer">
-          © <span className="layout-footer-year">{new Date().getFullYear()}</span> jezer-saving
+          © <span className="layout-footer-year">{new Date().getFullYear()}</span> BlockSpend · Design by Jezer
         </footer>
       </main>
 

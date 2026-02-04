@@ -9,6 +9,7 @@ import TransactionAccordion from '../components/TransactionAccordion';
 import TransactionForm from '../components/TransactionForm';
 import CaptureExpenseModal from '../components/CaptureExpenseModal';
 import Loader from '../components/Loader';
+import MonthlyBarChart from '../components/MonthlyBarChart';
 import { IconEdit, IconTrash, IconApply, IconChevronDown, IconChevronUp, IconChevronRight } from '../components/Icons.jsx';
 
 const now = new Date();
@@ -27,7 +28,7 @@ const MAIN_TABS = [
 ];
 export default function Transactions() {
   const { showMessage, confirm } = useMessage();
-  const { primaryAccountId, blurBalance } = useAppSettings();
+  const { primaryAccountId, blurBalance, appCurrency } = useAppSettings();
   const sidebarContext = useMovimientosSidebar();
   const [searchParams, setSearchParams] = useSearchParams();
   const monthParam = searchParams.get('month');
@@ -62,6 +63,8 @@ export default function Transactions() {
   const [searchDay, setSearchDay] = useState((dayNumFromUrl >= 1 && dayNumFromUrl <= 31) ? String(dayNumFromUrl) : '');
   const [showCaptureModal, setShowCaptureModal] = useState(false);
   const [initialDataFromCapture, setInitialDataFromCapture] = useState(null);
+  const [chartYear, setChartYear] = useState(yearParam ? Number(yearParam) : currentYear);
+  const [monthlyChartData, setMonthlyChartData] = useState([]);
 
   const setMonth = (m) => {
     const val = Math.min(12, Math.max(1, m));
@@ -75,8 +78,11 @@ export default function Transactions() {
 
   useEffect(() => {
     if (monthParam && yearParam) {
-      setMonthState(Number(monthParam));
-      setYearState(Number(yearParam));
+      const m = Number(monthParam);
+      const y = Number(yearParam);
+      setMonthState(m);
+      setYearState(y);
+      setChartYear(y);
     }
   }, [monthParam, yearParam]);
 
@@ -116,6 +122,21 @@ export default function Transactions() {
   useEffect(() => {
     load();
   }, [month, year]);
+
+  useEffect(() => {
+    api.transactions.monthlySummary(chartYear)
+      .then((arr) => {
+        const list = Array.isArray(arr) ? arr : [];
+        setMonthlyChartData(list.map((r) => ({
+          month: r.month,
+          year: r.year,
+          value: Number(r.expense) || 0,
+          income: Number(r.income) || 0,
+          expense: Number(r.expense) || 0,
+        })));
+      })
+      .catch(() => setMonthlyChartData([]));
+  }, [chartYear]);
 
   const prevMonth = () => {
     if (month === 1) {
@@ -181,6 +202,18 @@ export default function Transactions() {
     if (!ctx) return;
     ctx.updateState({ activeTab });
   }, [activeTab]);
+
+  useEffect(() => {
+    const add = searchParams.get('add');
+    if (add === 'expense' || add === 'income') {
+      openAddRef.current(add, 'normal');
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev);
+        p.delete('add');
+        return p;
+      });
+    }
+  }, []);
 
   const openEditTx = (tx) => {
     setFormType(tx.type === 'expense' ? 'expense' : 'income');
@@ -497,32 +530,39 @@ export default function Transactions() {
         </div>
       ) : null}
 
-      <div className="nav-month" style={styles.navMonth}>
-        <button type="button" onClick={prevMonth} className="nav-month-btn" aria-label="Mes anterior">‹</button>
-        <div style={styles.monthYear}>
-          <select value={month} onChange={(e) => setMonth(Number(e.target.value))} style={styles.select} aria-label="Mes">
-            {MONTHS.map((m, i) => (
-              <option key={m} value={i + 1}>{m}</option>
-            ))}
-          </select>
-          <select value={year} onChange={(e) => setYear(Number(e.target.value))} style={styles.select} aria-label="Año">
+      <div style={styles.chartBlock}>
+        <div style={styles.chartHeader}>
+          <span style={styles.chartTitle}>Gastos por mes</span>
+          <select
+            value={chartYear}
+            onChange={(e) => setChartYear(Number(e.target.value))}
+            className="select-modern"
+            style={styles.chartYearSelect}
+            aria-label="Año del gráfico"
+          >
             {[currentYear + 1, currentYear, currentYear - 1, currentYear - 2].map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
         </div>
-        <button type="button" onClick={nextMonth} className="nav-month-btn" aria-label="Mes siguiente">›</button>
+        {monthlyChartData.length > 0 ? (
+          <MonthlyBarChart
+            data={monthlyChartData}
+            highlightedMonth={month}
+            highlightedYear={year}
+            height={180}
+            onBarClick={(m, y) => {
+              setMonthState(m);
+              setYearState(y);
+              setChartYear(y);
+              setSearchParams({ month: String(m), year: String(y) });
+            }}
+            formatValue={(n) => new Intl.NumberFormat('es', { style: 'currency', currency: appCurrency || 'EUR' }).format(n ?? 0)}
+          />
+        ) : (
+          <p style={styles.chartEmpty}>No hay datos para {chartYear}.</p>
+        )}
       </div>
-
-      {activeTab === 'all' && (
-        <p className="movimientos-hint" style={styles.hint}>Vista de todos los movimientos del mes.</p>
-      )}
-      {activeTab === 'expense' && (
-        <p className="movimientos-hint" style={styles.hint}>Solo gastos del mes.</p>
-      )}
-      {activeTab === 'income' && (
-        <p className="movimientos-hint" style={styles.hint}>Solo ingresos del mes.</p>
-      )}
 
       {(activeTab === 'all' || activeTab === 'expense' || activeTab === 'income') && (
         <div style={styles.searchBar}>
@@ -852,6 +892,11 @@ const styles = {
   quickChipIcon: { fontSize: '1rem', lineHeight: 1 },
   quickChipExpense: { background: 'var(--expense)' },
   quickChipIncome: { background: 'var(--income)' },
+  chartBlock: { marginBottom: '1.25rem', width: '100%' },
+  chartHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' },
+  chartTitle: { fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' },
+  chartYearSelect: { width: 'auto', minWidth: '5.5rem' },
+  chartEmpty: { fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0, padding: '1rem 0' },
   tabs: { display: 'flex', gap: '0.25rem', marginBottom: '1rem' },
   tab: { padding: '0.5rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', fontSize: '0.9rem' },
   tabActive: { background: 'var(--surface-hover)', color: 'var(--accent)', border: '1px solid var(--accent)' },

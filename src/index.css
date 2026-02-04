@@ -929,12 +929,102 @@ input[type="date"].input-date-picker {
   flex-direction: column;
   gap: 0.35rem;
   min-width: 0;
+  flex: 1;
+  width: 100%;
 }
 .sidebar-user-block {
+  width: 100%;
+  position: relative;
+  margin-bottom: 0.25rem;
+}
+.sidebar-user-pill {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+.sidebar-user-pill-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+}
+.sidebar-user-pill-greeting {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-user-pill .sidebar-btn-gear {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.sidebar-btn-gear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.sidebar-btn-gear:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.sidebar-btn-gear[aria-expanded="true"] {
+  background: var(--surface-hover);
+  color: var(--accent);
+}
+.sidebar-user-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.35rem;
+  min-width: 10rem;
+  padding: 0.35rem 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  z-index: 100;
+}
+.sidebar-user-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  text-align: left;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.sidebar-user-dropdown-item:hover {
+  background: var(--surface-hover);
+  color: var(--accent);
 }
 .sidebar-user-name {
   font-size: 0.9rem;
@@ -944,41 +1034,6 @@ input[type="date"].input-date-picker {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 140px;
-}
-.sidebar-btn-disconnect {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.6rem;
-  font-size: 0.8rem;
-  border: none;
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-.sidebar-btn-disconnect:hover {
-  background: var(--surface-hover);
-  color: var(--text);
-}
-.sidebar-btn-profile {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-.sidebar-btn-profile:hover {
-  background: var(--surface-hover);
-  color: var(--text);
 }
 .sidebar-close {
   display: flex;
@@ -1172,6 +1227,16 @@ input[type="date"].input-date-picker {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+.page-dashboard {
+  width: 100%;
+  max-width: 720px;
+  box-sizing: border-box;
+}
+.page-dashboard .dashboard-quick-link:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
 }
 
 /* Movimientos: alineación consistente de todos los bloques */

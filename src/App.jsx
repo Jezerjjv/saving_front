@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './Layout';
+import Dashboard from './pages/Dashboard';
 import Calendar from './pages/Calendar';
 import Accounts from './pages/Accounts';
 import Transactions from './pages/Transactions';
@@ -26,7 +27,7 @@ function ProtectedRoute({ children }) {
 
 function GuestRoute({ children }) {
   const { token } = useAuth();
-  if (token) return <Navigate to="/movimientos" replace />;
+  if (token) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -38,7 +39,8 @@ function AppRoutes() {
           <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
           <Route path="/registro" element={<GuestRoute><Register /></GuestRoute>} />
           <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route index element={<Navigate to="/movimientos" replace />} />
+            <Route index element={<Dashboard />} />
+            <Route path="inicio" element={<Dashboard />} />
             <Route path="calendario" element={<Calendar />} />
             <Route path="cuentas" element={<Accounts />} />
             <Route path="movimientos" element={<Transactions />} />
