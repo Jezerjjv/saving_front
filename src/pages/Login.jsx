@@ -36,7 +36,7 @@ export default function Login() {
         return;
       }
       login(data.token, data.user);
-      navigate('/movimientos', { replace: true });
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.message || 'Error de conexión');
     } finally {
@@ -54,7 +54,7 @@ export default function Login() {
     setLoading(true);
     try {
       const ok = await loginWithPin(pin.trim());
-      if (ok) navigate('/movimientos', { replace: true });
+      if (ok) navigate('/', { replace: true });
       else setError('PIN incorrecto o sesión no disponible');
       setPin('');
     } catch {

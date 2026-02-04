@@ -34,7 +34,7 @@ export default function Register() {
         return;
       }
       login(data.token, data.user);
-      navigate('/movimientos', { replace: true });
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.message || 'Error de conexión');
     } finally {
