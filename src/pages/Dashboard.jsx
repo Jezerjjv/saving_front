@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
+import { useMessage } from '../context/MessageContext';
 import Loader from '../components/Loader';
 import { IconChevronDown, IconChevronUp } from '../components/Icons.jsx';
 
@@ -80,10 +81,39 @@ const styles = {
   tileGp: { display: 'flex', alignItems: 'center', gap: '0.2rem', marginTop: '0.25rem', fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.2 },
   tileGpPositive: { color: 'var(--income)' },
   tileGpNegative: { color: 'var(--expense)' },
+  quickBar: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: '0.5rem',
+    marginBottom: '1rem',
+    padding: '0.6rem 1rem',
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    width: '100%',
+    boxSizing: 'border-box',
+  },
+  quickChip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.35rem',
+    padding: '0.4rem 0.75rem',
+    border: 'none',
+    borderRadius: 'var(--radius)',
+    fontWeight: 500,
+    fontSize: '0.9rem',
+    cursor: 'pointer',
+    color: '#fff',
+  },
+  quickChipIcon: { fontSize: '1rem', lineHeight: 1 },
+  quickChipExpense: { background: 'var(--expense)' },
+  quickChipIncome: { background: 'var(--income)' },
 };
 
 export default function Dashboard() {
   useLayoutHeader('Inicio');
+  const { showMessage } = useMessage();
   const { appCurrency, exchangeRateUsdToEur, blurBalance } = useAppSettings();
   const rate = Number(exchangeRateUsdToEur) || 0.92;
   const now = new Date();
@@ -102,6 +132,10 @@ export default function Dashboard() {
   const [fixedIncomes, setFixedIncomes] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [groupedMonth, setGroupedMonth] = useState([]);
+  const [quickTemplatesExpense, setQuickTemplatesExpense] = useState([]);
+  const [quickTemplatesIncome, setQuickTemplatesIncome] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [applyingQuickId, setApplyingQuickId] = useState(null);
 
   const toAppCurrency = (amount, currency) => {
     const amt = Number(amount) || 0;
@@ -152,7 +186,17 @@ export default function Dashboard() {
       setGroupedMonth(grouped);
     }).catch(() => {});
 
-    Promise.all([loadAccounts, loadCrypto, loadStocks, loadFixedAndTx]).finally(() => setLoading(false));
+    const loadQuickAndCategories = Promise.all([
+      api.quickTemplates.list({ type: 'expense' }).then((arr) => Array.isArray(arr) ? arr : []),
+      api.quickTemplates.list({ type: 'income' }).then((arr) => Array.isArray(arr) ? arr : []),
+      api.categories.list().then((arr) => Array.isArray(arr) ? arr : []),
+    ]).then(([qe, qi, c]) => {
+      setQuickTemplatesExpense(qe);
+      setQuickTemplatesIncome(qi);
+      setCategories(c);
+    }).catch(() => {});
+
+    Promise.all([loadAccounts, loadCrypto, loadStocks, loadFixedAndTx, loadQuickAndCategories]).finally(() => setLoading(false));
   }, [currentMonth, currentYear]);
 
   const totalAccounts = accounts.reduce((sum, a) => {
@@ -210,6 +254,40 @@ export default function Dashboard() {
   nextDueItems.sort((a, b) => a.date.getTime() - b.date.getTime());
 
   const lastMovements = transactions.slice(0, 8);
+
+  const refreshAfterQuick = () => {
+    Promise.all([
+      api.transactions.list().then((arr) => setTransactions(Array.isArray(arr) ? arr : [])),
+      api.transactions.grouped(currentMonth, currentYear).then((g) => setGroupedMonth(Array.isArray(g) ? g : [])),
+    ]).catch(() => {});
+  };
+
+  const applyQuickTemplate = async (tpl) => {
+    setApplyingQuickId(tpl.type === 'expense' ? `e-${tpl.id}` : `i-${tpl.id}`);
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      await api.transactions.create({
+        name: tpl.name,
+        categoryId: tpl.categoryId,
+        amount: tpl.amount,
+        accountId: tpl.accountId,
+        type: tpl.type,
+        incomeType: tpl.type === 'income' ? 'quick' : undefined,
+        expenseType: tpl.type === 'expense' ? 'quick' : undefined,
+        date: today,
+      });
+      refreshAfterQuick();
+      showMessage(tpl.type === 'expense' ? 'Gasto aplicado.' : 'Ingreso aplicado.', 'success');
+    } catch (err) {
+      showMessage(err.message || 'Error al aplicar.', 'error');
+    } finally {
+      setApplyingQuickId(null);
+    }
+  };
+
+  const hasQuickTemplates =
+    (quickTemplatesExpense.length > 0 && quickTemplatesExpense.some((t) => t.showInQuick !== false)) ||
+    (quickTemplatesIncome.length > 0 && quickTemplatesIncome.some((t) => t.showInQuick !== false));
 
   const cryptoTiles = cryptoHoldings.map((h) => {
     const p = cryptoPrices[h.symbol];
@@ -280,6 +358,48 @@ export default function Dashboard() {
           </div>
         </div>
       </section>
+
+      {hasQuickTemplates && (
+        <section style={styles.section}>
+          <h2 style={styles.sectionTitle}>Acceso rápido</h2>
+          <div className="quick-bar" style={styles.quickBar}>
+            {quickTemplatesExpense.filter((t) => t.showInQuick !== false).map((t) => {
+              const icon = t.icon || categories.find((c) => c.id === t.categoryId)?.icon || '💸';
+              return (
+                <button
+                  key={`expense-${t.id}`}
+                  type="button"
+                  onClick={() => applyQuickTemplate(t)}
+                  disabled={applyingQuickId !== null}
+                  style={{ ...styles.quickChip, ...styles.quickChipExpense }}
+                  className="touch-target"
+                  title={t.name}
+                >
+                  <span style={styles.quickChipIcon}>{icon}</span>
+                  <span className="quick-chip-label">{applyingQuickId === `e-${t.id}` ? '…' : t.name}</span>
+                </button>
+              );
+            })}
+            {quickTemplatesIncome.filter((t) => t.showInQuick !== false).map((t) => {
+              const icon = t.icon || categories.find((c) => c.id === t.categoryId)?.icon || '💰';
+              return (
+                <button
+                  key={`income-${t.id}`}
+                  type="button"
+                  onClick={() => applyQuickTemplate(t)}
+                  disabled={applyingQuickId !== null}
+                  style={{ ...styles.quickChip, ...styles.quickChipIncome }}
+                  className="touch-target"
+                  title={t.name}
+                >
+                  <span style={styles.quickChipIcon}>{icon}</span>
+                  <span className="quick-chip-label">{applyingQuickId === `i-${t.id}` ? '…' : t.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {cryptoTiles.length > 0 && (
         <section style={styles.section}>

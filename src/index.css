@@ -1564,6 +1564,16 @@ input[type="date"].input-date-picker {
     font-size: 0.8rem;
     margin-bottom: 0.75rem;
   }
+  /* Acceso rápido: solo iconos en móvil */
+  .quick-bar .quick-chip-label {
+    display: none !important;
+  }
+  .quick-bar button {
+    padding: 0.5rem !important;
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
+    justify-content: center;
+  }
 }
 
 /* Nav bottom ya no se usa (todo en sidebar) - mantener por compatibilidad si algo lo referencia */
