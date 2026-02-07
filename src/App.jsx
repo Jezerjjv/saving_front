@@ -16,6 +16,7 @@ import Register from './pages/Register';
 import LockScreen from './pages/LockScreen';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { MovimientosSidebarProvider } from './context/MovimientosSidebarContext';
+import { SelectedAccountProvider } from './context/SelectedAccountContext';
 import { LayoutHeaderProvider } from './context/LayoutHeaderContext';
 
 function ProtectedRoute({ children }) {
@@ -34,26 +35,28 @@ function GuestRoute({ children }) {
 function AppRoutes() {
   return (
     <MovimientosSidebarProvider>
-      <LayoutHeaderProvider>
-        <Routes>
-          <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
-          <Route path="/registro" element={<GuestRoute><Register /></GuestRoute>} />
-          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route index element={<Dashboard />} />
-            <Route path="inicio" element={<Dashboard />} />
-            <Route path="calendario" element={<Calendar />} />
-            <Route path="cuentas" element={<Accounts />} />
-            <Route path="movimientos" element={<Transactions />} />
-            <Route path="rapidos-y-fijos" element={<RapidosYFijos />} />
-            <Route path="transferencias" element={<Transfers />} />
-            <Route path="criptomonedas" element={<Cryptos />} />
-            <Route path="acciones" element={<Acciones />} />
-            <Route path="intereses" element={<Intereses />} />
-            <Route path="calculadora" element={<Calculadora />} />
-            <Route path="configuracion" element={<Settings />} />
-          </Route>
-        </Routes>
-      </LayoutHeaderProvider>
+      <SelectedAccountProvider>
+        <LayoutHeaderProvider>
+          <Routes>
+            <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
+            <Route path="/registro" element={<GuestRoute><Register /></GuestRoute>} />
+            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+              <Route index element={<Dashboard />} />
+              <Route path="inicio" element={<Dashboard />} />
+              <Route path="calendario" element={<Calendar />} />
+              <Route path="cuentas" element={<Accounts />} />
+              <Route path="movimientos" element={<Transactions />} />
+              <Route path="rapidos-y-fijos" element={<RapidosYFijos />} />
+              <Route path="transferencias" element={<Transfers />} />
+              <Route path="criptomonedas" element={<Cryptos />} />
+              <Route path="acciones" element={<Acciones />} />
+              <Route path="intereses" element={<Intereses />} />
+              <Route path="calculadora" element={<Calculadora />} />
+              <Route path="configuracion" element={<Settings />} />
+            </Route>
+          </Routes>
+        </LayoutHeaderProvider>
+      </SelectedAccountProvider>
     </MovimientosSidebarProvider>
   );
 }

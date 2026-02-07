@@ -19,7 +19,6 @@ import {
   IconStocks,
   IconCalculator,
   IconLogout,
-  IconCamera,
   IconUser,
 } from './components/Icons.jsx';
 import { useMovimientosSidebar } from './context/MovimientosSidebarContext';
@@ -280,41 +279,6 @@ export default function Layout() {
                   <div className="sidebar-subnav">
                     {actions && (
                       <>
-                        <div className="sidebar-btn-row">
-                          <button
-                            type="button"
-                            className="sidebar-btn sidebar-btn-expense"
-                            onClick={() => { actions.openAdd('expense', 'normal'); onNavClick(); }}
-                            title="Añadir gasto"
-                          >
-                            <span className="sidebar-btn-symbol">+</span>
-                            Gasto
-                          </button>
-                          <button
-                            type="button"
-                            className="sidebar-btn sidebar-btn-income"
-                            onClick={() => { actions.openAdd('income', 'normal'); onNavClick(); }}
-                            title="Añadir ingreso"
-                          >
-                            <span className="sidebar-btn-symbol">+</span>
-                            Ingreso
-                          </button>
-                        </div>
-                        {actions.openCapture && (
-                          <button
-                            type="button"
-                            className="sidebar-btn sidebar-btn-capture"
-                            onClick={() => {
-                              if (location.pathname !== '/movimientos') navigate('/movimientos');
-                              setTimeout(() => actions.openCapture?.(), 100);
-                              onNavClick();
-                            }}
-                            title="Capturar factura o ticket"
-                          >
-                            <IconCamera size={18} />
-                            Capturar factura
-                          </button>
-                        )}
                         {MAIN_TABS.map((tab) => (
                           <button
                             key={tab.id}

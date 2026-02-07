@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import Loader from '../components/Loader';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
+import { useAppSettings } from '../context/AppSettingsContext';
+import { useSelectedAccount } from '../context/SelectedAccountContext';
+
+const ACCOUNT_ID_ALL = 'all';
 
 const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -39,18 +43,48 @@ function getMonthGrid(year, month) {
 
 export default function Calendar() {
   useLayoutHeader('Calendario');
+  const { primaryAccountId } = useAppSettings();
   const [year, setYear] = useState(currentYear);
   const [month, setMonth] = useState(currentMonth);
   const [viewMode, setViewMode] = useState('year');
   const [summary, setSummary] = useState([]);
   const [dailyIndicators, setDailyIndicators] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const { selectedAccountId, setSelectedAccountId } = useSelectedAccount();
   const [loading, setLoading] = useState(true);
+
+  const effectiveAccountId = selectedAccountId === ACCOUNT_ID_ALL
+    ? null
+    : (selectedAccountId ?? primaryAccountId ?? accounts[0]?.id ?? null);
+
+  const accountsSorted = useMemo(() => {
+    if (!accounts?.length) return [];
+    const primary = primaryAccountId != null ? accounts.find((a) => a.id === primaryAccountId) : null;
+    const rest = accounts.filter((a) => a.id !== primaryAccountId);
+    return primary ? [primary, ...rest] : accounts;
+  }, [accounts, primaryAccountId]);
+
+  useEffect(() => {
+    api.accounts.list()
+      .then((a) => setAccounts(Array.isArray(a) ? a : []))
+      .catch(() => setAccounts([]));
+  }, []);
+
+  useEffect(() => {
+    if (!accounts.length) return;
+    if (selectedAccountId === ACCOUNT_ID_ALL) return;
+    const primary = primaryAccountId != null ? accounts.find((a) => a.id === primaryAccountId) : null;
+    const defaultId = (primary || accounts[0])?.id ?? null;
+    if (selectedAccountId == null || !accounts.some((a) => a.id === selectedAccountId)) {
+      setSelectedAccountId(defaultId);
+    }
+  }, [accounts, primaryAccountId, selectedAccountId, setSelectedAccountId]);
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      api.transactions.monthlySummary(year),
-      api.transactions.dailyIndicators(year),
+      api.transactions.monthlySummary(year, effectiveAccountId),
+      api.transactions.dailyIndicators(year, effectiveAccountId),
     ])
       .then(([summaryData, indicatorsData]) => {
         setSummary(Array.isArray(summaryData) ? summaryData : []);
@@ -58,7 +92,7 @@ export default function Calendar() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [year]);
+  }, [year, effectiveAccountId]);
 
   /** Mapa (month -> day -> { hasIncome, hasExpense }) para búsqueda rápida */
   const indicatorsByMonthDay = useMemo(() => {
@@ -174,6 +208,37 @@ export default function Calendar() {
         {viewMode === 'year' ? 'Todo el año de un vistazo. Haz clic en un día para ver sus movimientos.' : 'Todos los días del mes. Haz clic en un día para ver sus movimientos.'}
       </p>
 
+      {accountsSorted.length > 0 && (
+        <div className="account-tabs-wrap calendar-account-tabs" style={styles.accountTabsWrap} role="tablist" aria-label="Cuenta">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={selectedAccountId === ACCOUNT_ID_ALL}
+            style={{ ...styles.accountTab, ...(selectedAccountId === ACCOUNT_ID_ALL ? styles.accountTabActive : {}) }}
+            className="touch-target"
+            onClick={() => setSelectedAccountId(ACCOUNT_ID_ALL)}
+          >
+            Cómputo total
+          </button>
+          {accountsSorted.map((a) => {
+            const isSelected = selectedAccountId === a.id;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                style={{ ...styles.accountTab, ...(isSelected ? styles.accountTabActive : {}) }}
+                className="touch-target"
+                onClick={() => setSelectedAccountId(a.id)}
+              >
+                {primaryAccountId === a.id ? '⭐ ' : ''}{a.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="page-defs-tabs calendar-view-tabs" role="tablist" aria-label="Vista mes o año">
         <button
           type="button"
@@ -272,6 +337,9 @@ export default function Calendar() {
 
 const styles = {
   subtitle: { color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center' },
+  accountTabsWrap: { display: 'flex', gap: '0.35rem', marginBottom: '1rem', overflowX: 'auto', paddingBottom: '0.15rem', flexWrap: 'wrap', WebkitOverflowScrolling: 'touch' },
+  accountTab: { padding: '0.5rem 0.85rem', fontSize: '0.9rem', fontWeight: 500, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s, color 0.15s, border-color 0.15s' },
+  accountTabActive: { background: 'var(--surface-hover)', color: 'var(--accent)', border: '1px solid var(--accent)' },
   navMonth: { marginBottom: '1rem', width: '100%' },
   monthYear: { display: 'flex', gap: '0.25rem', flexWrap: 'wrap' },
   yearLabel: {

@@ -114,7 +114,7 @@ const styles = {
 export default function Dashboard() {
   useLayoutHeader('Inicio');
   const { showMessage } = useMessage();
-  const { appCurrency, exchangeRateUsdToEur, blurBalance } = useAppSettings();
+  const { appCurrency, exchangeRateUsdToEur, blurBalance, primaryAccountId } = useAppSettings();
   const rate = Number(exchangeRateUsdToEur) || 0.92;
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
@@ -265,12 +265,13 @@ export default function Dashboard() {
   const applyQuickTemplate = async (tpl) => {
     setApplyingQuickId(tpl.type === 'expense' ? `e-${tpl.id}` : `i-${tpl.id}`);
     const today = new Date().toISOString().slice(0, 10);
+    const accountId = primaryAccountId != null ? primaryAccountId : tpl.accountId;
     try {
       await api.transactions.create({
         name: tpl.name,
         categoryId: tpl.categoryId,
         amount: tpl.amount,
-        accountId: tpl.accountId,
+        accountId: Number(accountId) || tpl.accountId,
         type: tpl.type,
         incomeType: tpl.type === 'income' ? 'quick' : undefined,
         expenseType: tpl.type === 'expense' ? 'quick' : undefined,

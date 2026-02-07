@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useMessage } from '../context/MessageContext';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { useSelectedAccount } from '../context/SelectedAccountContext';
 import { useMovimientosSidebar } from '../context/MovimientosSidebarContext';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
 import TransactionAccordion from '../components/TransactionAccordion';
@@ -10,7 +11,7 @@ import TransactionForm from '../components/TransactionForm';
 import CaptureExpenseModal from '../components/CaptureExpenseModal';
 import Loader from '../components/Loader';
 import MonthlyBarChart from '../components/MonthlyBarChart';
-import { IconEdit, IconTrash, IconApply, IconChevronDown, IconChevronUp, IconChevronRight } from '../components/Icons.jsx';
+import { IconEdit, IconTrash, IconApply, IconChevronDown, IconChevronUp, IconChevronRight, IconCamera } from '../components/Icons.jsx';
 
 const now = new Date();
 const currentMonth = now.getMonth() + 1;
@@ -20,6 +21,8 @@ const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
+
+const ACCOUNT_ID_ALL = 'all';
 
 const MAIN_TABS = [
   { id: 'all', label: 'Todo' },
@@ -65,6 +68,7 @@ export default function Transactions() {
   const [initialDataFromCapture, setInitialDataFromCapture] = useState(null);
   const [chartYear, setChartYear] = useState(yearParam ? Number(yearParam) : currentYear);
   const [monthlyChartData, setMonthlyChartData] = useState([]);
+  const { selectedAccountId, setSelectedAccountId } = useSelectedAccount();
 
   const setMonth = (m) => {
     const val = Math.min(12, Math.max(1, m));
@@ -91,12 +95,22 @@ export default function Transactions() {
     if (d >= 1 && d <= 31) setSearchDay(String(d));
   }, [dayParam]);
 
+  const effectiveAccountId = selectedAccountId === ACCOUNT_ID_ALL ? null : (selectedAccountId ?? primaryAccountId ?? accounts[0]?.id ?? null);
+  const isComputedTotal = selectedAccountId === ACCOUNT_ID_ALL;
+
+  const accountsSorted = useMemo(() => {
+    if (!accounts?.length) return [];
+    const primary = primaryAccountId != null ? accounts.find((a) => a.id === primaryAccountId) : null;
+    const rest = accounts.filter((a) => a.id !== primaryAccountId);
+    return primary ? [primary, ...rest] : accounts;
+  }, [accounts, primaryAccountId]);
+
   const load = () => {
     setLoading(true);
     Promise.all([
       api.transactions.grouped(month, year),
-      api.transactions.expensesByCategory(month, year),
-      api.transactions.incomesByCategory(month, year),
+      api.transactions.expensesByCategory(month, year, effectiveAccountId),
+      api.transactions.incomesByCategory(month, year, effectiveAccountId),
       api.accounts.list(),
       api.categories.list(),
       api.fixedExpenses.list(),
@@ -121,10 +135,20 @@ export default function Transactions() {
 
   useEffect(() => {
     load();
-  }, [month, year]);
+  }, [month, year, effectiveAccountId]);
 
   useEffect(() => {
-    api.transactions.monthlySummary(chartYear)
+    if (!accounts.length) return;
+    if (selectedAccountId === ACCOUNT_ID_ALL) return;
+    const primary = primaryAccountId != null ? accounts.find((a) => a.id === primaryAccountId) : null;
+    const defaultId = (primary || accounts[0])?.id ?? null;
+    if (selectedAccountId == null || !accounts.some((a) => a.id === selectedAccountId)) {
+      setSelectedAccountId(defaultId);
+    }
+  }, [accounts, primaryAccountId, selectedAccountId, setSelectedAccountId]);
+
+  useEffect(() => {
+    api.transactions.monthlySummary(chartYear, effectiveAccountId)
       .then((arr) => {
         const list = Array.isArray(arr) ? arr : [];
         setMonthlyChartData(list.map((r) => ({
@@ -136,7 +160,7 @@ export default function Transactions() {
         })));
       })
       .catch(() => setMonthlyChartData([]));
-  }, [chartYear]);
+  }, [chartYear, effectiveAccountId]);
 
   const prevMonth = () => {
     if (month === 1) {
@@ -315,12 +339,15 @@ export default function Transactions() {
   const applyQuickTemplate = async (tpl) => {
     setApplyingQuickId(tpl.type === 'expense' ? `e-${tpl.id}` : `i-${tpl.id}`);
     const today = new Date().toISOString().slice(0, 10);
+    const accountId = (selectedAccountId != null && selectedAccountId !== ACCOUNT_ID_ALL)
+      ? selectedAccountId
+      : (primaryAccountId != null ? primaryAccountId : tpl.accountId);
     try {
       await api.transactions.create({
         name: tpl.name,
         categoryId: tpl.categoryId,
         amount: tpl.amount,
-        accountId: tpl.accountId,
+        accountId: Number(accountId) || tpl.accountId,
         type: tpl.type,
         incomeType: tpl.type === 'income' ? 'quick' : undefined,
         expenseType: tpl.type === 'expense' ? 'quick' : undefined,
@@ -398,7 +425,21 @@ export default function Transactions() {
         items: Array.isArray(cat.items) ? cat.items : [],
       })) : [],
     }));
-    let result = activeTab === 'all' ? safeGrouped : safeGrouped
+    let result = safeGrouped;
+    if (effectiveAccountId != null) {
+      result = result
+        .map((dayGroup) => {
+          const filtered = dayGroup.categories
+            .map((cat) => ({
+              ...cat,
+              items: (cat.items || []).filter((t) => t.accountId === effectiveAccountId),
+            }))
+            .filter((cat) => (cat.items || []).length > 0);
+          return filtered.length ? { ...dayGroup, categories: filtered } : null;
+        })
+        .filter(Boolean);
+    }
+    result = activeTab === 'all' ? result : result
       .map((dayGroup) => {
         const filtered = dayGroup.categories
           .map((cat) => ({
@@ -445,13 +486,20 @@ export default function Transactions() {
 
   useLayoutHeader('Movimientos');
 
-  const primaryAccount = primaryAccountId != null && Array.isArray(accounts) ? accounts.find((a) => a.id === primaryAccountId) : null;
-  const primaryTotals = primaryAccountId != null && Array.isArray(grouped) && grouped.length > 0
+  const displayAccount = isComputedTotal && Array.isArray(accounts)
+    ? {
+        id: ACCOUNT_ID_ALL,
+        name: 'Cómputo total',
+        balance: accounts.reduce((s, a) => s + (Number(a.balance) || 0), 0),
+      }
+    : (effectiveAccountId != null && Array.isArray(accounts) ? accounts.find((a) => a.id === effectiveAccountId) : null);
+
+  const displayTotals = Array.isArray(grouped) && grouped.length > 0
     ? grouped.reduce(
         (acc, dayGroup) => {
           (Array.isArray(dayGroup.categories) ? dayGroup.categories : []).forEach((cat) => {
             (Array.isArray(cat.items) ? cat.items : []).forEach((t) => {
-              if (t.accountId !== primaryAccountId) return;
+              if (effectiveAccountId != null && t.accountId !== effectiveAccountId) return;
               if (t.type === 'income') acc.income += t.amount ?? 0;
               else acc.expense += t.amount ?? 0;
             });
@@ -462,30 +510,144 @@ export default function Transactions() {
       )
     : { income: 0, expense: 0 };
 
+  const groupedByAccount = useMemo(() => {
+    if (!isComputedTotal || !Array.isArray(accounts) || accounts.length === 0) return [];
+    const flat = filteredGrouped();
+    const byAccount = new Map();
+    flat.forEach((dayGroup) => {
+      (Array.isArray(dayGroup.categories) ? dayGroup.categories : []).forEach((cat) => {
+        (Array.isArray(cat.items) ? cat.items : []).forEach((t) => {
+          const aid = t.accountId;
+          if (aid == null) return;
+          if (!byAccount.has(aid)) {
+            const acc = accounts.find((a) => a.id === aid);
+            byAccount.set(aid, { accountId: aid, accountName: acc?.name ?? `Cuenta ${aid}`, account: acc, byDate: new Map() });
+          }
+          const rec = byAccount.get(aid);
+          const dateKey = dayGroup.date;
+          if (!rec.byDate.has(dateKey)) {
+            rec.byDate.set(dateKey, {
+              date: dateKey,
+              dayTotalIncome: 0,
+              dayTotalExpense: 0,
+              categories: [],
+            });
+          }
+          const dg = rec.byDate.get(dateKey);
+          let catRow = dg.categories.find((c) => (c.categoryId === (cat.categoryId ?? null)) && (c.categoryName === (cat.categoryName ?? null)));
+          if (!catRow) {
+            catRow = { categoryId: cat.categoryId, categoryName: cat.categoryName, categoryIcon: cat.categoryIcon, items: [] };
+            dg.categories.push(catRow);
+          }
+          catRow.items.push(t);
+          if (t.type === 'income') dg.dayTotalIncome += t.amount ?? 0;
+          else dg.dayTotalExpense += t.amount ?? 0;
+        });
+      });
+    });
+    return accountsSorted
+      .filter((a) => byAccount.has(a.id))
+      .map((a) => {
+        const rec = byAccount.get(a.id);
+        const dayGroups = Array.from(rec.byDate.entries())
+          .sort(([d1], [d2]) => d2.localeCompare(d1))
+          .map(([, dg]) => dg);
+        return { accountId: a.id, accountName: rec.accountName, account: rec.account, dayGroups };
+      });
+  }, [isComputedTotal, accounts, accountsSorted, grouped, activeTab, searchDay, searchText, searchCategoryId]);
+
   const fmt = (n) => new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(n);
 
   return (
     <div className="page-transactions">
-      {primaryAccount && (
+      {accountsSorted.length > 0 && (
+        <div className="account-tabs-wrap" style={styles.accountTabsWrap} role="tablist" aria-label="Cuentas">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={selectedAccountId === ACCOUNT_ID_ALL}
+            style={{ ...styles.accountTab, ...(selectedAccountId === ACCOUNT_ID_ALL ? styles.accountTabActive : {}) }}
+            className="touch-target"
+            onClick={() => setSelectedAccountId(ACCOUNT_ID_ALL)}
+          >
+            Cómputo total
+          </button>
+          {accountsSorted.map((a) => {
+            const isSelected = selectedAccountId === a.id;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                style={{ ...styles.accountTab, ...(isSelected ? styles.accountTabActive : {}) }}
+                className="touch-target"
+                onClick={() => setSelectedAccountId(a.id)}
+              >
+                {primaryAccountId === a.id ? '⭐ ' : ''}{a.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="movimientos-actions" style={styles.movimientosActions}>
+        <button
+          type="button"
+          onClick={() => openAdd('expense', 'normal')}
+          style={{ ...styles.actionBtn, ...styles.actionBtnExpense }}
+          className="touch-target"
+          title="Añadir gasto"
+        >
+          <span style={styles.actionBtnSymbol}>+</span>
+          Gasto
+        </button>
+        <button
+          type="button"
+          onClick={() => openAdd('income', 'normal')}
+          style={{ ...styles.actionBtn, ...styles.actionBtnIncome }}
+          className="touch-target"
+          title="Añadir ingreso"
+        >
+          <span style={styles.actionBtnSymbol}>+</span>
+          Ingreso
+        </button>
+        <button
+          type="button"
+          onClick={openCapture}
+          style={{ ...styles.actionBtn, ...styles.actionBtnCapture }}
+          className="touch-target"
+          title="Capturar factura o ticket"
+        >
+          <IconCamera size={18} />
+          Capturar factura
+        </button>
+      </div>
+
+      {displayAccount && (
         <div style={styles.primaryAccountCard}>
           <div style={styles.primaryAccountRow}>
-            <span style={styles.primaryAccountLabel}>Cuenta principal</span>
-            <span style={styles.primaryAccountName}>{primaryAccount.name}</span>
+            <span style={styles.primaryAccountLabel}>
+              {displayAccount.id === ACCOUNT_ID_ALL ? 'Todas las cuentas' : (primaryAccountId === displayAccount.id ? 'Cuenta principal' : 'Cuenta seleccionada')}
+            </span>
+            <span style={styles.primaryAccountName}>
+              {displayAccount.id !== ACCOUNT_ID_ALL && primaryAccountId === displayAccount.id ? '⭐ ' : ''}{displayAccount.name}
+            </span>
             <span style={styles.primaryAccountBalanceWrap}>
               <span style={styles.primaryAccountTotalLabel}>Saldo</span>
-              <span style={{ ...styles.primaryAccountBalance, color: (primaryAccount.balance ?? 0) >= 0 ? 'var(--income)' : 'var(--expense)' }} className={blurBalance ? 'balance-blur' : ''}>
-                {fmt(primaryAccount.balance ?? 0)}
+              <span style={{ ...styles.primaryAccountBalance, color: (displayAccount.balance ?? 0) >= 0 ? 'var(--income)' : 'var(--expense)' }} className={blurBalance ? 'balance-blur' : ''}>
+                {fmt(displayAccount.balance ?? 0)}
               </span>
             </span>
           </div>
           <div style={styles.primaryAccountTotals}>
             <span style={styles.primaryAccountTotalItem}>
-              <span style={styles.primaryAccountTotalLabel}>Ingresos</span>
-              <span style={{ ...styles.primaryAccountTotalAmount, color: 'var(--income)' }} className={blurBalance ? 'balance-blur' : ''}>{fmt(primaryTotals.income)}</span>
+              <span style={styles.primaryAccountTotalLabel}>Ingresos del mes</span>
+              <span style={{ ...styles.primaryAccountTotalAmount, color: 'var(--income)' }} className={blurBalance ? 'balance-blur' : ''}>{fmt(displayTotals.income)}</span>
             </span>
             <span style={styles.primaryAccountTotalItem}>
-              <span style={styles.primaryAccountTotalLabel}>Gastos</span>
-              <span style={{ ...styles.primaryAccountTotalAmount, color: 'var(--expense)' }} className={blurBalance ? 'balance-blur' : ''}>{fmt(primaryTotals.expense)}</span>
+              <span style={styles.primaryAccountTotalLabel}>Gastos del mes</span>
+              <span style={{ ...styles.primaryAccountTotalAmount, color: 'var(--expense)' }} className={blurBalance ? 'balance-blur' : ''}>{fmt(displayTotals.expense)}</span>
             </span>
           </div>
         </div>
@@ -637,7 +799,35 @@ export default function Transactions() {
         <>
           {(activeTab === 'all' || activeTab === 'expense' || activeTab === 'income') && (
             <div style={styles.accordions}>
-              {filteredGrouped().length === 0 ? (
+              {isComputedTotal ? (
+                groupedByAccount.length === 0 ? (
+                  <p style={styles.empty}>
+                    No hay {activeTab === 'all' ? 'movimientos' : activeTab === 'expense' ? 'gastos' : 'ingresos'}
+                    {' en '}{MONTHS[month - 1]} {year}.
+                  </p>
+                ) : (
+                  groupedByAccount.map(({ accountId, accountName, dayGroups }) => (
+                    <div key={accountId} style={styles.accountSection}>
+                      <h3 style={styles.accountSectionTitle}>
+                        {primaryAccountId === accountId ? '⭐ ' : ''}{accountName}
+                      </h3>
+                      {dayGroups.length === 0 ? (
+                        <p style={styles.empty}>Sin movimientos este mes.</p>
+                      ) : (
+                        dayGroups.map((dayGroup) => (
+                          <TransactionAccordion
+                            key={`${accountId}-${dayGroup.date}`}
+                            dayGroup={dayGroup}
+                            filterType={activeTab === 'all' ? null : activeTab}
+                            onEdit={openEditTx}
+                            onDelete={deleteTx}
+                          />
+                        ))
+                      )}
+                    </div>
+                  ))
+                )
+              ) : filteredGrouped().length === 0 ? (
                 <p style={styles.empty}>
                   No hay {activeTab === 'all' ? 'movimientos' : activeTab === 'expense' ? 'gastos' : 'ingresos'}
                   {' en '}{MONTHS[month - 1]} {year}.
@@ -887,6 +1077,34 @@ const styles = {
   primaryAccountTotalItem: { display: 'flex', flexDirection: 'column', gap: '0.15rem' },
   primaryAccountTotalLabel: { fontSize: '0.75rem', color: 'var(--text-muted)' },
   primaryAccountTotalAmount: { fontWeight: 600, fontSize: '0.95rem' },
+  accountTabsWrap: { display: 'flex', gap: '0.35rem', marginBottom: '1rem', overflowX: 'auto', paddingBottom: '0.15rem', flexWrap: 'wrap', WebkitOverflowScrolling: 'touch' },
+  accountTab: { padding: '0.5rem 0.85rem', fontSize: '0.9rem', fontWeight: 500, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.15s, color 0.15s, border-color 0.15s' },
+  accountTabActive: { background: 'var(--surface-hover)', color: 'var(--accent)', border: '1px solid var(--accent)' },
+  movimientosActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: '0.5rem',
+    marginBottom: '1rem',
+    width: '100%',
+  },
+  actionBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    padding: '0.5rem 1rem',
+    border: 'none',
+    borderRadius: 'var(--radius)',
+    fontWeight: 600,
+    fontSize: '0.95rem',
+    cursor: 'pointer',
+    color: '#fff',
+    transition: 'opacity 0.15s, transform 0.1s',
+  },
+  actionBtnSymbol: { fontSize: '1.1rem', lineHeight: 1 },
+  actionBtnExpense: { background: 'var(--expense)' },
+  actionBtnIncome: { background: 'var(--income)' },
+  actionBtnCapture: { background: 'var(--text-muted)', color: 'var(--bg)' },
   quickBar: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.6rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', width: '100%', boxSizing: 'border-box' },
   quickChip: { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.75rem', border: 'none', borderRadius: 'var(--radius)', fontWeight: 500, fontSize: '0.9rem', cursor: 'pointer', color: '#fff' },
   quickChipIcon: { fontSize: '1rem', lineHeight: 1 },
@@ -910,6 +1128,8 @@ const styles = {
   searchDay: { width: '5rem', minWidth: '5rem', flexShrink: 0, padding: '0.5rem 0.75rem', minHeight: 'var(--touch-min)', boxSizing: 'border-box', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '0.9rem', textAlign: 'center' },
   searchClear: { padding: '0.5rem 1rem', minHeight: 'var(--touch-min)', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', fontSize: '0.9rem' },
   accordions: { marginTop: '0.5rem', width: '100%' },
+  accountSection: { marginBottom: '1.5rem', width: '100%' },
+  accountSectionTitle: { fontSize: '1rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.75rem', marginTop: 0 },
   empty: { color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0 },
   summaryBlock: { marginTop: '1.5rem', marginBottom: '0.5rem', width: '100%' },
   summaryHeader: {

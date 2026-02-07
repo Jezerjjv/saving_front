@@ -1576,6 +1576,19 @@ input[type="date"].input-date-picker {
   }
 }
 
+/* Móvil: pestañas de cuentas en una sola fila con scroll horizontal */
+@media (max-width: 768px) {
+  .account-tabs-wrap {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .account-tabs-wrap .touch-target {
+    flex-shrink: 0;
+  }
+}
+
 /* Nav bottom ya no se usa (todo en sidebar) - mantener por compatibilidad si algo lo referencia */
 @media (max-width: 768px) {
   .nav-bottom {
