@@ -1,3 +1,4 @@
+// (marcador cambios - borrar si quieres)
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './Layout';
 import Dashboard from './pages/Dashboard';
@@ -14,7 +15,7 @@ import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import LockScreen from './pages/LockScreen';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext'; 
 import { MovimientosSidebarProvider } from './context/MovimientosSidebarContext';
 import { SelectedAccountProvider } from './context/SelectedAccountContext';
 import { LayoutHeaderProvider } from './context/LayoutHeaderContext';

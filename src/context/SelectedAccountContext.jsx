@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+// (marcador cambios - borrar si quieres)
+import { createContext, useContext, useState, useCallback } from 'react'; 
 
 const SelectedAccountContext = createContext(null);
 

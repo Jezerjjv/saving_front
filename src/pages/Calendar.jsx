@@ -1,10 +1,11 @@
+// (marcador cambios - borrar si quieres)
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import Loader from '../components/Loader';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
 import { useAppSettings } from '../context/AppSettingsContext';
-import { useSelectedAccount } from '../context/SelectedAccountContext';
+import { useSelectedAccount } from '../context/SelectedAccountContext'; 
 
 const ACCOUNT_ID_ALL = 'all';
 

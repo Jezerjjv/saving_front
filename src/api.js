@@ -1,3 +1,4 @@
+// (marcador cambios - borrar si quieres)
 const BASE = import.meta.env.VITE_API_URL || '/api';
 
 function getAuthHeaders() {
@@ -67,7 +68,7 @@ export const api = {
     list: () => request('/transactions'),
     grouped: (month, year) => request(`/transactions/grouped?month=${month}&year=${year}`),
     monthlySummary: (year, accountId) => request(`/transactions/monthly-summary?year=${year}${accountId != null ? `&accountId=${accountId}` : ''}`),
-    dailyIndicators: (year, accountId) => request(`/transactions/daily-indicators?year=${year}${accountId != null ? `&accountId=${accountId}` : ''}`),
+    dailyIndicators: (year, accountId) => request(`/transactions/daily-indicators?year=${year}${accountId != null ? `&accountId=${accountId}` : ''}`), 
     expensesByCategory: (month, year, accountId) => request(`/transactions/expenses-by-category?month=${month}&year=${year}${accountId != null ? `&accountId=${accountId}` : ''}`),
     incomesByCategory: (month, year, accountId) => request(`/transactions/incomes-by-category?month=${month}&year=${year}${accountId != null ? `&accountId=${accountId}` : ''}`),
     get: (id) => request(`/transactions/${id}`),

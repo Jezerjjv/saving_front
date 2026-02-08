@@ -1,3 +1,4 @@
+// (marcador cambios - borrar si quieres)
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api';
@@ -11,7 +12,7 @@ import TransactionForm from '../components/TransactionForm';
 import CaptureExpenseModal from '../components/CaptureExpenseModal';
 import Loader from '../components/Loader';
 import MonthlyBarChart from '../components/MonthlyBarChart';
-import { IconEdit, IconTrash, IconApply, IconChevronDown, IconChevronUp, IconChevronRight, IconCamera } from '../components/Icons.jsx';
+import { IconEdit, IconTrash, IconApply, IconChevronDown, IconChevronUp, IconChevronRight, IconCamera } from '../components/Icons.jsx'; 
 
 const now = new Date();
 const currentMonth = now.getMonth() + 1;

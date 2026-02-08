@@ -1,3 +1,4 @@
+// (marcador cambios - borrar si quieres)
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
@@ -21,7 +22,7 @@ import {
   IconLogout,
   IconUser,
 } from './components/Icons.jsx';
-import { useMovimientosSidebar } from './context/MovimientosSidebarContext';
+import { useMovimientosSidebar } from './context/MovimientosSidebarContext'; 
 import { useLayoutHeaderContent } from './context/LayoutHeaderContext';
 import { registerBiometric, isWebAuthnAvailable, hasBiometricCredential, clearBiometricCredential } from './utils/webauthn';
 
