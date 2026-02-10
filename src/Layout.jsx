@@ -32,6 +32,13 @@ const inversionesChildren = [
   { to: '/intereses', label: 'Intereses', Icon: IconPercent },
 ];
 
+const recordatoriosChildren = [
+  { to: '/pastillas', label: 'Recordatorio', Icon: IconCalendar },
+];
+const misAppsChildren = [
+  { type: 'group', label: 'Recordatorios', defaultTo: '/pastillas', children: recordatoriosChildren },
+];
+
 const navBase = [
   { to: '/', label: 'Inicio', Icon: IconHome },
   { to: '/movimientos', label: 'Movimientos', Icon: IconFileText },
@@ -39,6 +46,7 @@ const navBase = [
   { to: '/cuentas', label: 'Cuentas', Icon: IconCreditCard },
   { to: '/transferencias', label: 'Transferencias', Icon: IconArrowLeftRight },
   { type: 'group', label: 'Inversiones', Icon: IconStocks, defaultTo: '/criptomonedas', children: inversionesChildren },
+  { type: 'group', label: 'Mis apps', Icon: IconMenu, defaultTo: '/pastillas', children: misAppsChildren },
   { to: '/calculadora', label: 'Calculadora', Icon: IconCalculator },
   { to: '/configuracion', label: 'Config', Icon: IconSettings },
 ];
@@ -54,7 +62,12 @@ function isActive(path, location, item) {
   if (path === '/') return location.pathname === '/' || location.pathname === '/inicio';
   if (path === '/movimientos') return location.pathname === '/movimientos' || location.pathname === '/rapidos-y-fijos';
   if (item?.type === 'group' && item.children) {
-    return item.children.some((c) => c.to === location.pathname);
+    const matchChild = (c) => {
+      if (c.to === location.pathname) return true;
+      if (c?.type === 'group' && c.children) return c.children.some((gc) => gc.to === location.pathname);
+      return false;
+    };
+    return item.children.some(matchChild);
   }
   return location.pathname.startsWith(path);
 }
@@ -128,11 +141,14 @@ export default function Layout() {
   const inversionesChildrenFiltered = interestEligible
     ? inversionesChildren
     : inversionesChildren.filter((c) => c.to !== '/intereses');
-  const nav = navBase.map((item) =>
-    item.type === 'group'
-      ? { ...item, children: inversionesChildrenFiltered }
-      : item
-  );
+  const nav = navBase
+    .filter((item) => item.label !== 'Mis apps' || user?.is_admin)
+    .map((item) => {
+      if (item.type === 'group' && item.label === 'Inversiones') {
+        return { ...item, children: inversionesChildrenFiltered };
+      }
+      return item;
+    });
 
   const onNavClick = () => setSidebarOpen(false);
 
@@ -332,6 +348,28 @@ export default function Layout() {
                 {item.type === 'group' && item.children && active && (
                   <div className="sidebar-subnav">
                     {item.children.map((child) => {
+                      if (child?.type === 'group' && child.children) {
+                        return (
+                          <div key={child.label} className="sidebar-subnav-group">
+                            <span className="sidebar-subnav-label">{child.label}</span>
+                            {child.children.map((gc) => {
+                              const GcIcon = gc.Icon;
+                              return (
+                                <Link
+                                  key={gc.to}
+                                  to={gc.to}
+                                  className={`sidebar-link-btn ${location.pathname === gc.to ? 'is-active' : ''}`}
+                                  onClick={onNavClick}
+                                  aria-current={location.pathname === gc.to ? 'page' : undefined}
+                                >
+                                  {GcIcon && <GcIcon size={16} />}
+                                  <span>{gc.label}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
                       const ChildIcon = child.Icon;
                       return (
                         <Link

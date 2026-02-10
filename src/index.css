@@ -647,6 +647,512 @@ input[type="date"].input-date-picker {
   color: #fff;
 }
 
+/* --- Recordatorio pastillas (Mis apps) --- */
+.page-pastillas {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: visible;
+}
+.page-pastillas-section {
+  margin-bottom: 1.5rem;
+  overflow: visible;
+}
+.page-pastillas-hint {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+.page-pastillas-input-wrap {
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+  display: flex;
+}
+.page-pastillas-input-wrap .page-pastillas-input-inline {
+  width: 100%;
+  min-width: 8rem;
+}
+.page-pastillas-input-inline:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+.page-pastillas-section-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.page-pastillas-card {
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 22rem;
+}
+.page-pastillas-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.page-pastillas-input,
+.page-pastillas-input-inline {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+.page-pastillas-input-inline {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.page-pastillas-input-inline::placeholder {
+  color: var(--text-muted);
+}
+.page-pastillas-add-inline {
+  overflow: visible;
+}
+.page-pastillas-color-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.page-pastillas-color-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.page-pastillas-color-picker,
+.page-pastillas-color-picker-small {
+  width: 40px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  background: var(--surface);
+}
+.page-pastillas-color-picker-small {
+  width: 32px;
+  height: 32px;
+}
+.page-pastillas-color-preset {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+.page-pastillas-color-preset.is-selected {
+  border-color: var(--text);
+  box-shadow: 0 0 0 1px var(--surface);
+}
+/* Botones mismo tamaño (Crear pastilla, Añadir, nav) */
+.page-pastillas-btn-same {
+  min-height: var(--touch-min);
+  min-width: 6rem;
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.page-pastillas-btn-same:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.page-pastillas-btn-same:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.page-pastillas-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+.page-pastillas-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+.page-pastillas-chip:hover {
+  background: var(--surface-hover);
+}
+.page-pastillas-chip.is-active {
+  background: var(--surface-hover);
+  border-width: 2px;
+}
+.page-pastillas-chip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.page-pastillas-chip-name {
+  min-width: 0;
+  overflow: visible;
+  word-break: break-word;
+  white-space: normal;
+  text-align: left;
+}
+.page-pastillas-chip-del {
+  margin-left: 0.35rem;
+  padding: 0;
+  width: var(--touch-min);
+  height: var(--touch-min);
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.page-pastillas-chip-del:hover {
+  color: var(--expense);
+  background: rgba(220, 53, 69, 0.15);
+  border-color: var(--expense);
+}
+.page-pastillas-add-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.page-pastillas-add-inline .page-pastillas-input-wrap,
+.page-pastillas-add-inline .page-pastillas-color-picker-small,
+.page-pastillas-add-inline .page-pastillas-btn-same {
+  min-height: var(--touch-min);
+  flex-shrink: 0;
+}
+.page-pastillas-add-inline .page-pastillas-btn-same {
+  flex: 0 0 auto;
+}
+.page-pastillas-row-mobile {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+/* Pastillas: móvil — botones y controles uniformes */
+@media (max-width: 520px) {
+  .page-pastillas-add-inline {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .page-pastillas-add-inline .page-pastillas-input-wrap {
+    width: 100%;
+    min-width: 0;
+  }
+  .page-pastillas-add-inline .page-pastillas-input-wrap .page-pastillas-input-inline {
+    min-width: 0;
+  }
+  .page-pastillas-add-inline .page-pastillas-row-mobile {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+  .page-pastillas-add-inline .page-pastillas-row-mobile .page-pastillas-color-picker-small,
+  .page-pastillas-add-inline .page-pastillas-row-mobile .page-pastillas-btn-same {
+    flex: 1 1 0;
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
+    width: auto;
+  }
+}
+.page-pastillas-select {
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.9rem;
+  min-height: var(--touch-min);
+  font-family: inherit;
+  cursor: pointer;
+}
+/* Celdas del calendario pastillas: mismo tamaño */
+.pastillas-cell-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-min);
+}
+.pastillas-day-slot,
+.pastillas-day-empty {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  border-radius: var(--radius);
+  box-sizing: border-box;
+}
+.pastillas-day-slot {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+  width: 100%;
+}
+.pastillas-day-slot:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--accent);
+}
+.pastillas-day-slot:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+.pastillas-day-today {
+  background: var(--accent) !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+.pastillas-day-today:hover:not(:disabled) {
+  background: var(--accent-hover) !important;
+  color: #fff !important;
+}
+.pastillas-day-empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+.pastillas-day-num {
+  line-height: 1.2;
+}
+.pastillas-day-dots {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.pastillas-day-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Submenú al hacer clic en un día */
+.page-pastillas-day-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.page-pastillas-day-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+.page-pastillas-day-menu-card {
+  position: relative;
+  width: 100%;
+  max-width: 20rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.page-pastillas-day-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.page-pastillas-day-menu-close {
+  width: var(--touch-min);
+  height: var(--touch-min);
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+.page-pastillas-day-menu-close:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.page-pastillas-day-menu-hint {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.page-pastillas-day-menu-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+.page-pastillas-day-menu-btn-secondary {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  min-height: var(--touch-min);
+}
+.page-pastillas-day-menu-btn-secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.page-pastillas-day-menu-btn-secondary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.page-pastillas-day-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.page-pastillas-day-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+.page-pastillas-day-menu-item:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.page-pastillas-day-menu-item.is-taken {
+  border-left: 3px solid var(--pill-color, var(--accent));
+}
+.page-pastillas-day-menu-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.page-pastillas-day-menu-name {
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+  word-break: break-word;
+}
+.page-pastillas-day-menu-check {
+  flex-shrink: 0;
+  color: var(--income);
+  font-weight: 700;
+}
+.page-pastillas-day-menu-empty {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.page-pastillas-day-menu-footer {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.page-pastillas-day-menu-btn-cancel {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  min-height: var(--touch-min);
+}
+.page-pastillas-day-menu-btn-cancel:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.page-pastillas-day-menu-btn-cancel:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.page-pastillas-day-menu-btn-apply {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  min-height: var(--touch-min);
+}
+.page-pastillas-day-menu-btn-apply:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.page-pastillas-day-menu-btn-apply:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 /* Vista año: 12 meses de un vistazo */
 .page-calendar .calendar-view-tabs {
   margin-bottom: 1rem;
@@ -775,7 +1281,7 @@ input[type="date"].input-date-picker {
   text-align: center;
 }
 
-/* Navegación mes/año: mismo aspecto que las pestañas (Todo, Gastos, etc.) */
+/* Navegación mes/año: mismo aspecto que Calendario (botones pill, mismos tamaños) */
 .nav-month {
   display: flex;
   align-items: center;
@@ -784,10 +1290,30 @@ input[type="date"].input-date-picker {
   flex-wrap: wrap;
   margin-bottom: 1rem;
 }
-.nav-month-btn {
-  min-width: var(--touch-min);
-  min-height: var(--touch-min);
-  padding: 0.5rem 1rem;
+.nav-month .nav-month-btn {
+  flex: 0 0 auto;
+  width: 2rem;
+}
+.nav-month-month-year {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  max-width: 18rem;
+}
+.nav-month-month-year select:first-of-type {
+  min-width: 6.5rem;
+  max-width: 8rem;
+}
+.nav-month-month-year select:last-of-type {
+  min-width: 4rem;
+  max-width: 5.5rem;
+}
+.nav-month-btn,
+.nav-month select {
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -795,8 +1321,13 @@ input[type="date"].input-date-picker {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   font-family: inherit;
+  box-sizing: border-box;
+}
+.nav-month-btn {
+  font-size: 1.05rem;
+  cursor: pointer;
 }
 .nav-month-btn:hover {
   background: var(--surface-hover);
@@ -804,21 +1335,13 @@ input[type="date"].input-date-picker {
   color: var(--accent);
 }
 .nav-month select {
-  padding: 0.5rem 1rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
-  font-size: 0.9rem;
-  min-height: var(--touch-min);
-  font-family: inherit;
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b8b96' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  padding-right: 2rem;
+  background-position: right 0.5rem center;
+  padding-right: 1.5rem;
 }
 .nav-month select:hover {
   border-color: var(--accent);
@@ -1090,6 +1613,23 @@ input[type="date"].input-date-picker {
   margin-bottom: 0.25rem;
   border-left: 2px solid var(--border);
   margin-left: 0.75rem;
+}
+.sidebar-subnav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-top: 0.25rem;
+}
+.sidebar-subnav-group:first-child {
+  margin-top: 0;
+}
+.sidebar-subnav-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 0.2rem 0 0.1rem 0;
 }
 .sidebar-subnav .sidebar-btn,
 .sidebar-subnav .sidebar-link-btn {

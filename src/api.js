@@ -121,6 +121,16 @@ export const api = {
     get: () => request('/settings'),
     update: (body) => request('/settings', { method: 'PUT', body: JSON.stringify(body) }),
   },
+  pillLog: {
+    getTypes: () => request('/pill-log/types'),
+    createType: (body) => request('/pill-log/types', { method: 'POST', body: JSON.stringify(body) }),
+    updateType: (id, body) => request(`/pill-log/types/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    deleteType: (id) => request(`/pill-log/types/${id}`, { method: 'DELETE' }),
+    getMonth: (year, month) => request(`/pill-log?year=${year}&month=${month}`),
+    setDay: (date, pillTypeId, add) => add
+      ? request('/pill-log', { method: 'POST', body: JSON.stringify({ date, pillTypeId }) })
+      : request(`/pill-log?date=${encodeURIComponent(date)}&pillTypeId=${pillTypeId}`, { method: 'DELETE' }),
+  },
   interestHistory: {
     get: (year, month) => {
       const q = new URLSearchParams();
