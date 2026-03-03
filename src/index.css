@@ -1793,6 +1793,26 @@ input[type="date"].input-date-picker {
   text-align: center;
 }
 
+/* Resaltado al ir al movimiento desde el resumen */
+.tx-highlight-flash {
+  animation: tx-highlight-flash 1.5s ease;
+}
+@keyframes tx-highlight-flash {
+  0% { background: rgba(99, 102, 241, 0.35); }
+  100% { background: transparent; }
+}
+
+/* Hover en filas del resumen (ir al movimiento) */
+.page-transactions .summary-tx-row-btn:hover {
+  background: var(--surface-hover);
+}
+
+/* Botones expandir/comprimir todo en resumen */
+.page-transactions .summary-expand-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
 /* Rápidos y Fijos: pestañas modernas (pill/segment) */
 .page-rapidos-y-fijos {
   width: 100%;

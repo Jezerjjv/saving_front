@@ -60,6 +60,9 @@ export default function Transactions() {
   const [expensesByCategory, setExpensesByCategory] = useState([]);
   const [incomesByCategory, setIncomesByCategory] = useState([]);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [expandedSummaryCategoryIds, setExpandedSummaryCategoryIds] = useState({});
+  const [summaryTab, setSummaryTab] = useState('list'); // 'list' | 'chart'
+  const [highlightedTxId, setHighlightedTxId] = useState(null);
   const [applyingQuickId, setApplyingQuickId] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [searchCategoryId, setSearchCategoryId] = useState('');
@@ -485,6 +488,34 @@ export default function Transactions() {
     return result;
   };
 
+  /** Movimientos por categoría para el resumen (acordeón): mismo filtro de cuenta que el listado */
+  const transactionsByCategory = useMemo(() => {
+    if (!Array.isArray(grouped) || grouped.length === 0) return {};
+    const byCat = {};
+    grouped.forEach((dayGroup) => {
+      const categories = Array.isArray(dayGroup.categories) ? dayGroup.categories : [];
+      categories.forEach((cat) => {
+        const items = Array.isArray(cat.items) ? cat.items : [];
+        items.forEach((tx) => {
+          if (effectiveAccountId != null && tx.accountId !== effectiveAccountId) return;
+          const key = cat.categoryId ?? 0;
+          if (!byCat[key]) byCat[key] = [];
+          byCat[key].push({
+            id: tx.id,
+            date: dayGroup.date,
+            name: tx.name,
+            amount: tx.amount,
+            type: tx.type,
+          });
+        });
+      });
+    });
+    Object.keys(byCat).forEach((k) => {
+      byCat[k].sort((a, b) => a.date.localeCompare(b.date) || 0);
+    });
+    return byCat;
+  }, [grouped, effectiveAccountId]);
+
   useLayoutHeader('Movimientos');
 
   const displayAccount = isComputedTotal && Array.isArray(accounts)
@@ -556,6 +587,28 @@ export default function Transactions() {
         return { accountId: a.id, accountName: rec.accountName, account: rec.account, dayGroups };
       });
   }, [isComputedTotal, accounts, accountsSorted, grouped, activeTab, searchDay, searchText, searchCategoryId]);
+
+  const goToTransaction = (tx) => {
+    if (!tx?.date || !tx?.id) return;
+    const day = new Date(tx.date + 'T12:00:00').getDate();
+    setSearchParams({ month: String(month), year: String(year), day: String(day) });
+    setSearchDay(String(day));
+    setHighlightedTxId(tx.id);
+  };
+
+  useEffect(() => {
+    if (highlightedTxId == null) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`tx-${highlightedTxId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        el.classList.add('tx-highlight-flash');
+        setTimeout(() => el.classList.remove('tx-highlight-flash'), 1500);
+      }
+      setHighlightedTxId(null);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [highlightedTxId]);
 
   const fmt = (n) => new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(n);
 
@@ -822,6 +875,7 @@ export default function Transactions() {
                             filterType={activeTab === 'all' ? null : activeTab}
                             onEdit={openEditTx}
                             onDelete={deleteTx}
+                            highlightedTxId={highlightedTxId}
                           />
                         ))
                       )}
@@ -841,6 +895,7 @@ export default function Transactions() {
                     filterType={activeTab === 'all' ? null : activeTab}
                     onEdit={openEditTx}
                     onDelete={deleteTx}
+                    highlightedTxId={highlightedTxId}
                   />
                 ))
               )}
@@ -866,39 +921,98 @@ export default function Transactions() {
             const fmt = (n) => new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(n);
             return (
           <div style={styles.summaryBlock}>
-            <button
-              type="button"
-              onClick={() => setSummaryOpen(!summaryOpen)}
-              style={styles.summaryHeader}
-            >
-              <span>Resumen del mes (gastos e ingresos)</span>
-              <span style={styles.chevron}>
-                {summaryOpen ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
-              </span>
-            </button>
+            <div style={styles.summaryHeader}>
+              <button
+                type="button"
+                onClick={() => setSummaryOpen(!summaryOpen)}
+                style={styles.summaryHeaderToggle}
+              >
+                <span>Resumen del mes (gastos e ingresos)</span>
+                <span style={styles.chevron}>
+                  {summaryOpen ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+                </span>
+              </button>
+              {summaryOpen && summaryTab === 'list' && mergedCategories.length > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const allExpanded = mergedCategories.every((row) => expandedSummaryCategoryIds[row.categoryId ?? 0]);
+                    setExpandedSummaryCategoryIds(allExpanded ? {} : mergedCategories.reduce((acc, row) => ({ ...acc, [row.categoryId ?? 0]: true }), {}));
+                  }}
+                  style={styles.summaryCollapseAllBtn}
+                  title={mergedCategories.every((row) => expandedSummaryCategoryIds[row.categoryId ?? 0]) ? 'Comprimir todas las categorías' : 'Expandir todas las categorías'}
+                  aria-label={mergedCategories.every((row) => expandedSummaryCategoryIds[row.categoryId ?? 0]) ? 'Comprimir categorías' : 'Expandir categorías'}
+                >
+                  {mergedCategories.every((row) => expandedSummaryCategoryIds[row.categoryId ?? 0]) ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+                </button>
+              )}
+            </div>
             {summaryOpen && (
               <div style={styles.summaryContent}>
                 {mergedCategories.length === 0 ? (
                   <p style={styles.empty}>No hay movimientos en {MONTHS[month - 1]} {year}.</p>
                 ) : (
                   <>
-                    {mergedCategories.map((row) => (
-                      <div key={row.categoryId ?? 'sin-categoria'} style={styles.summaryRow}>
-                        <span style={styles.summaryCatIcon}>{row.categoryIcon}</span>
-                        <div style={styles.summaryCatInfo}>
-                          <span style={styles.summaryCatName}>{row.categoryName}</span>
-                        </div>
-                        <div style={styles.summaryCatAmounts}>
-                          {row.totalExpense > 0 && (
-                            <span style={styles.summaryCatTotalExpense}>{fmt(row.totalExpense)}</span>
+                    <div style={styles.summaryTabs}>
+                      <button type="button" style={{ ...styles.summaryTabBtn, ...(summaryTab === 'list' ? styles.summaryTabBtnActive : {}) }} onClick={() => setSummaryTab('list')}>Listado</button>
+                      <button type="button" style={{ ...styles.summaryTabBtn, ...(summaryTab === 'chart' ? styles.summaryTabBtnActive : {}) }} onClick={() => setSummaryTab('chart')}>Gráfico</button>
+                    </div>
+                    {summaryTab === 'list' && (
+                      <>
+                    {mergedCategories.map((row) => {
+                      const catKey = row.categoryId ?? 0;
+                      const isExpanded = expandedSummaryCategoryIds[catKey];
+                      const txs = transactionsByCategory[catKey] || [];
+                      return (
+                        <div key={String(catKey)} style={styles.summaryCategoryWrap}>
+                          <button
+                            type="button"
+                            style={styles.summaryRowButton}
+                            onClick={() => setExpandedSummaryCategoryIds((p) => ({ ...p, [catKey]: !p[catKey] }))}
+                          >
+                            <span style={styles.summaryCatIcon}>{row.categoryIcon}</span>
+                            <div style={styles.summaryCatInfo}>
+                              <span style={styles.summaryCatName}>{row.categoryName}</span>
+                            </div>
+                            <div style={styles.summaryCatAmounts}>
+                              {row.totalExpense > 0 && (
+                                <span style={styles.summaryCatTotalExpense}>{fmt(row.totalExpense)}</span>
+                              )}
+                              {row.totalExpense > 0 && row.totalIncome > 0 && <span style={{ margin: '0 0.25rem', color: 'var(--text-muted)' }}>·</span>}
+                              {row.totalIncome > 0 && (
+                                <span style={styles.summaryCatTotalIncome}>{fmt(row.totalIncome)}</span>
+                              )}
+                            </div>
+                            <span style={styles.summaryChevronSmall}>
+                              {isExpanded ? <IconChevronDown size={12} /> : <IconChevronRight size={12} />}
+                            </span>
+                          </button>
+                          {isExpanded && txs.length > 0 && (
+                            <div style={styles.summaryCategoryDetail}>
+                              {txs.map((tx) => (
+                                <button
+                                  key={tx.id}
+                                  type="button"
+                                  className="summary-tx-row-btn"
+                                  style={styles.summaryTxRowButton}
+                                  onClick={() => goToTransaction(tx)}
+                                  title="Ir al movimiento en el mes"
+                                >
+                                  <span style={styles.summaryTxDay}>
+                                    {new Date(tx.date + 'T12:00:00').getDate()}
+                                  </span>
+                                  <span style={styles.summaryTxName}>{tx.name}</span>
+                                  <span style={tx.type === 'income' ? styles.summaryCatTotalIncome : styles.summaryCatTotalExpense}>
+                                    {tx.type === 'income' ? '+' : ''}{fmt(tx.amount)}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
                           )}
-                          {row.totalExpense > 0 && row.totalIncome > 0 && <span style={{ margin: '0 0.25rem', color: 'var(--text-muted)' }}>·</span>}
-                          {row.totalIncome > 0 && (
-                            <span style={styles.summaryCatTotalIncome}>{fmt(row.totalIncome)}</span>
-                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     <div style={styles.summaryTotalRow}>
                       <span>Total gastos</span>
                       <span style={styles.summaryTotalAmountExpense}>{fmt(totalExp)}</span>
@@ -907,6 +1021,48 @@ export default function Transactions() {
                       <span>Total ingresos</span>
                       <span style={styles.summaryTotalAmountIncome}>{fmt(totalInc)}</span>
                     </div>
+                      </>
+                    )}
+                    {summaryTab === 'chart' && (
+                      <div style={styles.summaryChartWrap}>
+                        {totalExp > 0 && (
+                          <div style={styles.summaryChartSection}>
+                            <div style={styles.summaryChartSectionTitle}>Gastos por categoría</div>
+                            {mergedCategories.filter((r) => r.totalExpense > 0).map((row) => {
+                              const pct = totalExp > 0 ? (row.totalExpense / totalExp) * 100 : 0;
+                              return (
+                                <div key={`exp-${row.categoryId ?? 0}`} style={styles.summaryChartRow}>
+                                  <span style={styles.summaryCatIcon}>{row.categoryIcon}</span>
+                                  <span style={styles.summaryChartLabel}>{row.categoryName}</span>
+                                  <div style={styles.summaryChartBarWrap}>
+                                    <div style={{ ...styles.summaryChartBar, ...styles.summaryBarExpense, width: `${pct}%` }} />
+                                  </div>
+                                  <span style={styles.summaryCatTotalExpense}>{fmt(row.totalExpense)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {totalInc > 0 && (
+                          <div style={styles.summaryChartSection}>
+                            <div style={styles.summaryChartSectionTitle}>Ingresos por categoría</div>
+                            {mergedCategories.filter((r) => r.totalIncome > 0).map((row) => {
+                              const pct = totalInc > 0 ? (row.totalIncome / totalInc) * 100 : 0;
+                              return (
+                                <div key={`inc-${row.categoryId ?? 0}`} style={styles.summaryChartRow}>
+                                  <span style={styles.summaryCatIcon}>{row.categoryIcon}</span>
+                                  <span style={styles.summaryChartLabel}>{row.categoryName}</span>
+                                  <div style={styles.summaryChartBarWrap}>
+                                    <div style={{ ...styles.summaryChartBar, ...styles.summaryBarIncome, width: `${pct}%` }} />
+                                  </div>
+                                  <span style={styles.summaryCatTotalIncome}>{fmt(row.totalIncome)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -917,51 +1073,110 @@ export default function Transactions() {
 
           {activeTab === 'expense' && (
           <div style={styles.summaryBlock}>
-            <button
-              type="button"
-              onClick={() => setSummaryOpen(!summaryOpen)}
-              style={styles.summaryHeader}
-            >
-              <span>Resumen de gastos</span>
-              <span style={styles.summaryHeaderTotalExpense}>
-                {expensesByCategory.length > 0
-                  ? new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(
-                      expensesByCategory.reduce((s, r) => s + r.total, 0)
-                    )
-                  : '—'}
-              </span>
-              <span style={styles.chevron}>
-                {summaryOpen ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
-              </span>
-            </button>
+            <div style={styles.summaryHeader}>
+              <button
+                type="button"
+                onClick={() => setSummaryOpen(!summaryOpen)}
+                style={styles.summaryHeaderToggle}
+              >
+                <span>Resumen de gastos</span>
+                <span style={styles.summaryHeaderTotalExpense}>
+                  {expensesByCategory.length > 0
+                    ? new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(
+                        expensesByCategory.reduce((s, r) => s + r.total, 0)
+                      )
+                    : '—'}
+                </span>
+                <span style={styles.chevron}>
+                  {summaryOpen ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+                </span>
+              </button>
+              {summaryOpen && summaryTab === 'list' && expensesByCategory.length > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const allExpanded = expensesByCategory.every((row) => expandedSummaryCategoryIds[row.categoryId ?? 0]);
+                    setExpandedSummaryCategoryIds(allExpanded ? {} : expensesByCategory.reduce((acc, row) => ({ ...acc, [row.categoryId ?? 0]: true }), {}));
+                  }}
+                  style={styles.summaryCollapseAllBtn}
+                  title={expensesByCategory.every((row) => expandedSummaryCategoryIds[row.categoryId ?? 0]) ? 'Comprimir todas las categorías' : 'Expandir todas las categorías'}
+                  aria-label={expensesByCategory.every((row) => expandedSummaryCategoryIds[row.categoryId ?? 0]) ? 'Comprimir categorías' : 'Expandir categorías'}
+                >
+                  {expensesByCategory.every((row) => expandedSummaryCategoryIds[row.categoryId ?? 0]) ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+                </button>
+              )}
+            </div>
             {summaryOpen && (
               <div style={styles.summaryContent}>
                 {expensesByCategory.length === 0 ? (
                   <p style={styles.empty}>No hay gastos en {MONTHS[month - 1]} {year}.</p>
                 ) : (
                   <>
+                    <div style={styles.summaryTabs}>
+                      <button type="button" style={{ ...styles.summaryTabBtn, ...(summaryTab === 'list' ? styles.summaryTabBtnActive : {}) }} onClick={() => setSummaryTab('list')}>Listado</button>
+                      <button type="button" style={{ ...styles.summaryTabBtn, ...(summaryTab === 'chart' ? styles.summaryTabBtnActive : {}) }} onClick={() => setSummaryTab('chart')}>Gráfico</button>
+                    </div>
+                    {summaryTab === 'list' && (
+                      <>
                     {expensesByCategory.map((row) => {
+                      const catKey = row.categoryId ?? 0;
+                      const isExpanded = expandedSummaryCategoryIds[catKey];
+                      const txs = (transactionsByCategory[catKey] || []).filter((t) => t.type === 'expense');
                       const totalAll = expensesByCategory.reduce((s, r) => s + r.total, 0);
                       const pct = totalAll > 0 ? (row.total / totalAll) * 100 : 0;
                       return (
-                        <div key={row.categoryId ?? 'sin-categoria'} style={styles.summaryRow}>
-                          <span style={styles.summaryCatIcon}>{row.categoryIcon}</span>
-                          <div style={styles.summaryCatInfo}>
-                            <span style={styles.summaryCatName}>{row.categoryName}</span>
-                            <div style={styles.summaryBarWrap}>
-                              <div
-                                style={{
-                                  ...styles.summaryBar,
-                                  ...styles.summaryBarExpense,
-                                  width: `${pct}%`,
-                                }}
-                              />
+                        <div key={String(catKey)} style={styles.summaryCategoryWrap}>
+                          <button
+                            type="button"
+                            style={styles.summaryRowButton}
+                            onClick={() => setExpandedSummaryCategoryIds((p) => ({ ...p, [catKey]: !p[catKey] }))}
+                          >
+                            <span style={styles.summaryCatIcon}>{row.categoryIcon}</span>
+                            <div style={styles.summaryCatInfo}>
+                              <span style={styles.summaryCatName}>{row.categoryName}</span>
+                              <div style={styles.summaryBarWrap}>
+                                <div
+                                  style={{
+                                    ...styles.summaryBar,
+                                    ...styles.summaryBarExpense,
+                                    width: `${pct}%`,
+                                  }}
+                                />
+                              </div>
                             </div>
-                          </div>
-                          <span style={styles.summaryCatTotalExpense}>
-                            {new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(row.total)}
-                            <span style={styles.summaryCatPct}> · {totalAll > 0 ? pct.toFixed(0) : 0}%</span>
-                          </span>
+                            <div style={styles.summaryCatAmounts}>
+                              <span style={styles.summaryCatTotalExpense}>
+                                {new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(row.total)}
+                                <span style={styles.summaryCatPct}> · {totalAll > 0 ? pct.toFixed(0) : 0}%</span>
+                              </span>
+                            </div>
+                            <span style={styles.summaryChevronSmall}>
+                              {isExpanded ? <IconChevronDown size={12} /> : <IconChevronRight size={12} />}
+                            </span>
+                          </button>
+                          {isExpanded && txs.length > 0 && (
+                            <div style={styles.summaryCategoryDetail}>
+                              {txs.map((tx) => (
+                                <button
+                                  key={tx.id}
+                                  type="button"
+                                  className="summary-tx-row-btn"
+                                  style={styles.summaryTxRowButton}
+                                  onClick={() => goToTransaction(tx)}
+                                  title="Ir al gasto en el mes"
+                                >
+                                  <span style={styles.summaryTxDay}>
+                                    {new Date(tx.date + 'T12:00:00').getDate()}
+                                  </span>
+                                  <span style={styles.summaryTxName}>{tx.name}</span>
+                                  <span style={styles.summaryCatTotalExpense}>
+                                    {new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(tx.amount)}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -973,6 +1188,38 @@ export default function Transactions() {
                         )}
                       </span>
                     </div>
+                      </>
+                    )}
+                    {summaryTab === 'chart' && (() => {
+                      const totalAll = expensesByCategory.reduce((s, r) => s + r.total, 0);
+                      return (
+                        <div style={styles.summaryChartWrap}>
+                          <div style={styles.summaryChartSection}>
+                            {expensesByCategory.map((row) => {
+                              const pct = totalAll > 0 ? (row.total / totalAll) * 100 : 0;
+                              return (
+                                <div key={String(row.categoryId ?? 0)} style={styles.summaryChartRow}>
+                                  <span style={styles.summaryCatIcon}>{row.categoryIcon}</span>
+                                  <span style={styles.summaryChartLabel}>{row.categoryName}</span>
+                                  <div style={styles.summaryChartBarWrap}>
+                                    <div style={{ ...styles.summaryChartBar, ...styles.summaryBarExpense, width: `${pct}%` }} />
+                                  </div>
+                                  <span style={styles.summaryCatTotalExpense}>
+                                    {new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(row.total)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div style={styles.summaryTotalRow}>
+                            <span>Total gastos</span>
+                            <span style={styles.summaryTotalAmountExpense}>
+                              {new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(totalAll)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </div>
@@ -982,51 +1229,110 @@ export default function Transactions() {
 
           {activeTab === 'income' && (
           <div style={styles.summaryBlock}>
-            <button
-              type="button"
-              onClick={() => setSummaryOpen(!summaryOpen)}
-              style={styles.summaryHeader}
-            >
-              <span>Resumen de ingresos</span>
-              <span style={styles.summaryHeaderTotalIncome}>
-                {incomesByCategory.length > 0
-                  ? new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(
-                      incomesByCategory.reduce((s, r) => s + r.total, 0)
-                    )
-                  : '—'}
-              </span>
-              <span style={styles.chevron}>
-                {summaryOpen ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
-              </span>
-            </button>
+            <div style={styles.summaryHeader}>
+              <button
+                type="button"
+                onClick={() => setSummaryOpen(!summaryOpen)}
+                style={styles.summaryHeaderToggle}
+              >
+                <span>Resumen de ingresos</span>
+                <span style={styles.summaryHeaderTotalIncome}>
+                  {incomesByCategory.length > 0
+                    ? new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(
+                        incomesByCategory.reduce((s, r) => s + r.total, 0)
+                      )
+                    : '—'}
+                </span>
+                <span style={styles.chevron}>
+                  {summaryOpen ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
+                </span>
+              </button>
+              {summaryOpen && summaryTab === 'list' && incomesByCategory.length > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const allExpanded = incomesByCategory.every((row) => expandedSummaryCategoryIds[row.categoryId ?? 0]);
+                    setExpandedSummaryCategoryIds(allExpanded ? {} : incomesByCategory.reduce((acc, row) => ({ ...acc, [row.categoryId ?? 0]: true }), {}));
+                  }}
+                  style={styles.summaryCollapseAllBtn}
+                  title={incomesByCategory.every((row) => expandedSummaryCategoryIds[row.categoryId ?? 0]) ? 'Comprimir todas las categorías' : 'Expandir todas las categorías'}
+                  aria-label={incomesByCategory.every((row) => expandedSummaryCategoryIds[row.categoryId ?? 0]) ? 'Comprimir categorías' : 'Expandir categorías'}
+                >
+                  {incomesByCategory.every((row) => expandedSummaryCategoryIds[row.categoryId ?? 0]) ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+                </button>
+              )}
+            </div>
             {summaryOpen && (
               <div style={styles.summaryContent}>
                 {incomesByCategory.length === 0 ? (
                   <p style={styles.empty}>No hay ingresos en {MONTHS[month - 1]} {year}.</p>
                 ) : (
                   <>
+                    <div style={styles.summaryTabs}>
+                      <button type="button" style={{ ...styles.summaryTabBtn, ...(summaryTab === 'list' ? styles.summaryTabBtnActive : {}) }} onClick={() => setSummaryTab('list')}>Listado</button>
+                      <button type="button" style={{ ...styles.summaryTabBtn, ...(summaryTab === 'chart' ? styles.summaryTabBtnActive : {}) }} onClick={() => setSummaryTab('chart')}>Gráfico</button>
+                    </div>
+                    {summaryTab === 'list' && (
+                      <>
                     {incomesByCategory.map((row) => {
+                      const catKey = row.categoryId ?? 0;
+                      const isExpanded = expandedSummaryCategoryIds[catKey];
+                      const txs = (transactionsByCategory[catKey] || []).filter((t) => t.type === 'income');
                       const totalAll = incomesByCategory.reduce((s, r) => s + r.total, 0);
                       const pct = totalAll > 0 ? (row.total / totalAll) * 100 : 0;
                       return (
-                        <div key={row.categoryId ?? 'sin-categoria'} style={styles.summaryRow}>
-                          <span style={styles.summaryCatIcon}>{row.categoryIcon}</span>
-                          <div style={styles.summaryCatInfo}>
-                            <span style={styles.summaryCatName}>{row.categoryName}</span>
-                            <div style={styles.summaryBarWrap}>
-                              <div
-                                style={{
-                                  ...styles.summaryBar,
-                                  ...styles.summaryBarIncome,
-                                  width: `${pct}%`,
-                                }}
-                              />
+                        <div key={String(catKey)} style={styles.summaryCategoryWrap}>
+                          <button
+                            type="button"
+                            style={styles.summaryRowButton}
+                            onClick={() => setExpandedSummaryCategoryIds((p) => ({ ...p, [catKey]: !p[catKey] }))}
+                          >
+                            <span style={styles.summaryCatIcon}>{row.categoryIcon}</span>
+                            <div style={styles.summaryCatInfo}>
+                              <span style={styles.summaryCatName}>{row.categoryName}</span>
+                              <div style={styles.summaryBarWrap}>
+                                <div
+                                  style={{
+                                    ...styles.summaryBar,
+                                    ...styles.summaryBarIncome,
+                                    width: `${pct}%`,
+                                  }}
+                                />
+                              </div>
                             </div>
-                          </div>
-                          <span style={styles.summaryCatTotalIncome}>
-                            {new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(row.total)}
-                            <span style={styles.summaryCatPct}> · {totalAll > 0 ? pct.toFixed(0) : 0}%</span>
-                          </span>
+                            <div style={styles.summaryCatAmounts}>
+                              <span style={styles.summaryCatTotalIncome}>
+                                {new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(row.total)}
+                                <span style={styles.summaryCatPct}> · {totalAll > 0 ? pct.toFixed(0) : 0}%</span>
+                              </span>
+                            </div>
+                            <span style={styles.summaryChevronSmall}>
+                              {isExpanded ? <IconChevronDown size={12} /> : <IconChevronRight size={12} />}
+                            </span>
+                          </button>
+                          {isExpanded && txs.length > 0 && (
+                            <div style={styles.summaryCategoryDetail}>
+                              {txs.map((tx) => (
+                                <button
+                                  key={tx.id}
+                                  type="button"
+                                  className="summary-tx-row-btn"
+                                  style={styles.summaryTxRowButton}
+                                  onClick={() => goToTransaction(tx)}
+                                  title="Ir al ingreso en el mes"
+                                >
+                                  <span style={styles.summaryTxDay}>
+                                    {new Date(tx.date + 'T12:00:00').getDate()}
+                                  </span>
+                                  <span style={styles.summaryTxName}>{tx.name}</span>
+                                  <span style={styles.summaryCatTotalIncome}>
+                                    +{new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(tx.amount)}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -1038,6 +1344,38 @@ export default function Transactions() {
                         )}
                       </span>
                     </div>
+                      </>
+                    )}
+                    {summaryTab === 'chart' && (() => {
+                      const totalAll = incomesByCategory.reduce((s, r) => s + r.total, 0);
+                      return (
+                        <div style={styles.summaryChartWrap}>
+                          <div style={styles.summaryChartSection}>
+                            {incomesByCategory.map((row) => {
+                              const pct = totalAll > 0 ? (row.total / totalAll) * 100 : 0;
+                              return (
+                                <div key={String(row.categoryId ?? 0)} style={styles.summaryChartRow}>
+                                  <span style={styles.summaryCatIcon}>{row.categoryIcon}</span>
+                                  <span style={styles.summaryChartLabel}>{row.categoryName}</span>
+                                  <div style={styles.summaryChartBarWrap}>
+                                    <div style={{ ...styles.summaryChartBar, ...styles.summaryBarIncome, width: `${pct}%` }} />
+                                  </div>
+                                  <span style={styles.summaryCatTotalIncome}>
+                                    +{new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(row.total)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div style={styles.summaryTotalRow}>
+                            <span>Total ingresos</span>
+                            <span style={styles.summaryTotalAmountIncome}>
+                              {new Intl.NumberFormat('es', { style: 'currency', currency: 'EUR' }).format(totalAll)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </div>
@@ -1137,22 +1475,48 @@ const styles = {
     width: '100%',
     boxSizing: 'border-box',
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.75rem 1rem',
+    gap: '0.35rem',
+    padding: '0.4rem 0.5rem',
     background: 'var(--surface)',
     border: '1px solid var(--border)',
     borderRadius: 'var(--radius)',
+  },
+  summaryHeaderToggle: {
+    flex: 1,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: 0,
+    background: 'none',
+    border: 'none',
     color: 'var(--text)',
     fontSize: '1rem',
     fontWeight: 600,
     textAlign: 'left',
     cursor: 'pointer',
+    fontFamily: 'inherit',
   },
   summaryHeaderTotal: { color: 'var(--expense)', fontWeight: 700 },
   summaryHeaderTotalExpense: { color: 'var(--expense)', fontWeight: 700 },
   summaryHeaderTotalIncome: { color: 'var(--income)', fontWeight: 700 },
+  summaryCollapseAllBtn: {
+    flexShrink: 0,
+    width: 28,
+    height: 28,
+    minWidth: 28,
+    minHeight: 28,
+    padding: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'var(--surface-hover)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    color: 'var(--text-muted)',
+    cursor: 'pointer',
+  },
   chevron: { color: 'var(--text-muted)' },
   summaryContent: {
     marginTop: '0.25rem',
@@ -1161,6 +1525,57 @@ const styles = {
     paddingLeft: '0.75rem',
     paddingTop: '0.5rem',
     paddingBottom: '0.5rem',
+  },
+  summaryTabs: {
+    display: 'flex',
+    gap: '0.25rem',
+    marginBottom: '0.75rem',
+  },
+  summaryTabBtn: {
+    padding: '0.4rem 0.75rem',
+    fontSize: '0.85rem',
+    fontWeight: 500,
+    background: 'var(--bg)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    color: 'var(--text-muted)',
+    cursor: 'pointer',
+  },
+  summaryTabBtnActive: {
+    background: 'var(--accent)',
+    borderColor: 'var(--accent)',
+    color: '#fff',
+  },
+  summaryChartWrap: { marginTop: '0.25rem' },
+  summaryChartSection: { marginBottom: '1rem' },
+  summaryChartSectionTitle: {
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    color: 'var(--text-muted)',
+    marginBottom: '0.5rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.03em',
+  },
+  summaryChartRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    marginBottom: '0.4rem',
+    fontSize: '0.9rem',
+  },
+  summaryChartLabel: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  summaryChartBarWrap: {
+    flex: '1 1 80px',
+    minWidth: 60,
+    height: 8,
+    background: 'var(--surface-hover)',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  summaryChartBar: {
+    height: '100%',
+    borderRadius: 4,
+    minWidth: 2,
   },
   summarySection: {
     marginBottom: '1.25rem',
@@ -1177,6 +1592,58 @@ const styles = {
     gap: '0.5rem',
     marginBottom: '0.5rem',
   },
+  summaryCategoryWrap: { marginBottom: '0.35rem' },
+  summaryRowButton: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    padding: '0.35rem 0.5rem',
+    background: 'var(--surface-hover)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    color: 'var(--text)',
+    fontSize: '0.85rem',
+    textAlign: 'left',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  summaryChevronSmall: { color: 'var(--text-muted)', flexShrink: 0 },
+  summaryCategoryDetail: {
+    marginTop: '0.2rem',
+    marginLeft: '0.4rem',
+    marginBottom: '0.5rem',
+    paddingLeft: '0.5rem',
+    borderLeft: '1px solid var(--border)',
+  },
+  summaryTxRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.25rem 0',
+    fontSize: '0.85rem',
+  },
+  summaryTxRowButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    width: '100%',
+    padding: '0.35rem 0',
+    fontSize: '0.85rem',
+    background: 'none',
+    border: 'none',
+    color: 'inherit',
+    font: 'inherit',
+    textAlign: 'left',
+    cursor: 'pointer',
+    borderRadius: 'var(--radius)',
+  },
+  summaryTxDay: {
+    minWidth: '1.5rem',
+    color: 'var(--text-muted)',
+    fontWeight: 600,
+  },
+  summaryTxName: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   summaryCatIcon: { fontSize: '1.1rem', flexShrink: 0 },
   summaryCatInfo: { flex: 1, minWidth: 0 },
   summaryCatName: { fontSize: '0.9rem' },
@@ -1195,7 +1662,7 @@ const styles = {
   summaryBarExpense: { background: 'var(--expense)' },
   summaryBarIncome: { background: 'var(--income)' },
   summaryCatTotal: { color: 'var(--expense)', fontWeight: 600, fontSize: '0.9rem' },
-  summaryCatAmounts: { display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap', flexShrink: 0 },
+  summaryCatAmounts: { display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap', flexShrink: 0, marginLeft: 'auto' },
   summaryCatTotalExpense: { color: 'var(--expense)', fontWeight: 600, fontSize: '0.9rem' },
   summaryCatTotalIncome: { color: 'var(--income)', fontWeight: 600, fontSize: '0.9rem' },
   summaryCatPct: { color: 'var(--text-muted)', fontWeight: 500, marginLeft: '0.25rem' },

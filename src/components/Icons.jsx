@@ -305,3 +305,17 @@ export function IconFingerprint({ size = defaultSize, style, ...rest }) {
     </svg>
   );
 }
+
+/** Coche / vehículo (control del coche, recambios). */
+export function IconCar({ size = navSize, style, ...rest }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, ...style }} {...rest}>
+      <path d="M14 16H9a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1" />
+      <path d="M5 14l1.5-4.5h11L19 14" />
+      <path d="M5 14v4a1 1 0 0 0 1 1h1" />
+      <path d="M19 14v4a1 1 0 0 1-1 1h-1" />
+      <circle cx="7.5" cy="18.5" r="1.5" />
+      <circle cx="16.5" cy="18.5" r="1.5" />
+    </svg>
+  );
+}

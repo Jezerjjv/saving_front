@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { IconEdit, IconTrash, IconChevronDown, IconChevronRight } from './Icons.jsx';
 
 function formatDate(dateStr) {
@@ -33,7 +33,7 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export default function TransactionAccordion({ dayGroup, filterType, onEdit, onDelete }) {
+export default function TransactionAccordion({ dayGroup, filterType, onEdit, onDelete, highlightedTxId }) {
   const isToday = dayGroup.date === todayStr();
   const [openDay, setOpenDay] = useState(isToday);
   const [openCats, setOpenCats] = useState(() => {
@@ -42,6 +42,18 @@ export default function TransactionAccordion({ dayGroup, filterType, onEdit, onD
     (dayGroup.categories || []).forEach((cat) => { o[cat.categoryId] = false; });
     return o;
   });
+
+  useEffect(() => {
+    if (highlightedTxId == null) return;
+    for (const cat of dayGroup.categories || []) {
+      const hasTx = (cat.items || []).some((t) => t.id === highlightedTxId);
+      if (hasTx) {
+        setOpenDay(true);
+        setOpenCats((prev) => ({ ...prev, [cat.categoryId]: true }));
+        break;
+      }
+    }
+  }, [highlightedTxId, dayGroup.categories]);
 
   const toggleCat = (catId) => {
     setOpenCats((prev) => ({ ...prev, [catId]: !prev[catId] }));
@@ -130,7 +142,7 @@ export default function TransactionAccordion({ dayGroup, filterType, onEdit, onD
                 {isOpen && (
                   <ul style={styles.items}>
                     {cat.items.map((tx) => (
-                      <li key={tx.id} style={styles.item}>
+                      <li key={tx.id} id={`tx-${tx.id}`} style={styles.item}>
                         <div style={styles.itemMain}>
                           <span>{tx.name}</span>
                           <span className={tx.type === 'expense' ? 'expense' : 'income'} style={styles.amount}>
