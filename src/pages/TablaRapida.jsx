@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useMessage } from '../context/MessageContext';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getTodayLocalDateString } from '../utils/dateUtils';
-import { IconEdit, IconTrash } from '../components/Icons.jsx';
+import { IconEdit, IconTrash, IconEye } from '../components/Icons.jsx';
 import Loader from '../components/Loader.jsx';
 
 const MONTHS = [
@@ -52,8 +52,25 @@ export default function TablaRapida() {
   const [form, setForm] = useState(emptyForm());
   const [applyingQuickId, setApplyingQuickId] = useState(null);
   const [showFormModal, setShowFormModal] = useState(false);
-  const [quickBarTab, setQuickBarTab] = useState('rapidos'); // 'rapidos' | 'fijos'
+  const [showFijosModal, setShowFijosModal] = useState(false);
+  const [showQuickBar, setShowQuickBar] = useState(true);
+  const [filterType, setFilterType] = useState('all'); // 'all' | 'expense' | 'income'
+  const [filterCategoryId, setFilterCategoryId] = useState(''); // '' = todas
+  const [expandedRowId, setExpandedRowId] = useState(null);
+  const [isNarrowScreen, setIsNarrowScreen] = useState(typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
   const dateInputRef = useRef(null);
+  const hasSetDefaultDayForMonth = useRef(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const onChange = () => setIsNarrowScreen(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!isNarrowScreen) setExpandedRowId(null);
+  }, [isNarrowScreen]);
 
   useLayoutHeader('Tabla rápida');
 
@@ -175,6 +192,33 @@ export default function TablaRapida() {
     return Array.from(days).sort((a, b) => b - a);
   }, [entriesInMonth]);
 
+  useEffect(() => {
+    if (month !== currentMonth || year !== currentYear) hasSetDefaultDayForMonth.current = false;
+  }, [month, year]);
+
+  useEffect(() => {
+    const todayNum = now.getDate();
+    const noDayInUrl = dayParam === null || dayParam === '';
+    if (
+      noDayInUrl &&
+      month === currentMonth &&
+      year === currentYear &&
+      !hasSetDefaultDayForMonth.current &&
+      daysWithEntries.length > 0 &&
+      daysWithEntries.includes(todayNum)
+    ) {
+      setSelectedDay(String(todayNum));
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p);
+        next.set('month', String(month));
+        next.set('year', String(year));
+        next.set('day', String(todayNum));
+        return next;
+      });
+      hasSetDefaultDayForMonth.current = true;
+    }
+  }, [month, year, dayParam, daysWithEntries]);
+
   const displayedEntries = useMemo(() => {
     let list = entriesInMonth;
     if (selectedDay !== '') {
@@ -197,15 +241,35 @@ export default function TablaRapida() {
     });
   }, [entriesInMonth, selectedDay, sortBy, sortDir, categories]);
 
+  const filteredDisplayedEntries = useMemo(() => {
+    let list = displayedEntries;
+    if (filterType !== 'all') list = list.filter((e) => e.type === filterType);
+    if (filterCategoryId !== '') {
+      const catId = filterCategoryId === 'none' ? null : Number(filterCategoryId);
+      list = list.filter((e) => (e.categoryId == null ? null : e.categoryId) === catId);
+    }
+    return list;
+  }, [displayedEntries, filterType, filterCategoryId]);
+
   const totals = useMemo(() => {
     let expense = 0;
     let income = 0;
-    displayedEntries.forEach((e) => {
+    filteredDisplayedEntries.forEach((e) => {
       if (e.type === 'income') income += e.amount ?? 0;
       else expense += e.amount ?? 0;
     });
     return { expense, income, balance: income - expense };
-  }, [displayedEntries]);
+  }, [filteredDisplayedEntries]);
+
+  const totalsMonth = useMemo(() => {
+    let expense = 0;
+    let income = 0;
+    entriesInMonth.forEach((e) => {
+      if (e.type === 'income') income += e.amount ?? 0;
+      else expense += e.amount ?? 0;
+    });
+    return { expense, income, balance: income - expense };
+  }, [entriesInMonth]);
 
   const fmt = (n) =>
     new Intl.NumberFormat('es', { style: 'currency', currency: appCurrency || 'EUR' }).format(n ?? 0);
@@ -260,9 +324,9 @@ export default function TablaRapida() {
       .finally(() => setApplyingQuickId(null));
   };
 
-  const openAddModal = () => {
+  const openAddModal = (type = 'expense') => {
     setEditingId(null);
-    setForm(emptyForm());
+    setForm({ ...emptyForm(), type });
     setShowFormModal(true);
   };
 
@@ -357,10 +421,13 @@ export default function TablaRapida() {
 
   const styles = {
     wrap: { width: '100%', boxSizing: 'border-box' },
-    hint: { fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' },
-    quickBarTabs: { display: 'flex', gap: '0.25rem', marginBottom: '0.5rem', flexWrap: 'wrap' },
-    quickBarTab: { padding: '0.45rem 1rem', fontSize: '0.9rem', fontWeight: 500, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', cursor: 'pointer', transition: 'background 0.15s, color 0.15s, border-color 0.15s' },
-    quickBarTabActive: { background: 'var(--surface-hover)', color: 'var(--accent)', border: '1px solid var(--accent)' },
+    topButtons: { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' },
+    topBtn: { padding: '0.5rem 1rem', fontSize: '0.9rem', fontWeight: 600, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', cursor: 'pointer', transition: 'background 0.15s, color 0.15s, border-color 0.15s' },
+    topBtnActive: { background: 'var(--surface-hover)', color: 'var(--accent)', border: '1px solid var(--accent)' },
+    addCombo: { display: 'inline-flex', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)' },
+    addComboBtn: { padding: '0.35rem 0.65rem', fontSize: '1.05rem', fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'background 0.15s, color 0.15s', lineHeight: 1 },
+    addComboMinus: { background: 'var(--expense)', color: '#fff' },
+    addComboPlus: { background: 'var(--income)', color: '#fff' },
     quickBar: {
       display: 'flex',
       flexWrap: 'wrap',
@@ -389,8 +456,9 @@ export default function TablaRapida() {
     },
     quickChipExpense: { background: 'var(--expense)' },
     quickChipIncome: { background: 'var(--income)' },
+    quickChipIconOnly: { minWidth: '2.5rem', minHeight: '2.5rem', padding: '0.4rem', justifyContent: 'center' },
     quickChipFixed: { background: 'transparent', color: 'var(--expense)', border: '2px solid var(--expense)' },
-    quickChipIcon: { fontSize: '1rem', lineHeight: 1 },
+    quickChipIcon: { fontSize: '1.2rem', lineHeight: 1 },
     addBtn: { padding: '0.5rem 1.25rem', fontSize: '0.95rem', fontWeight: 600, border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', background: 'var(--accent)', color: '#fff', marginBottom: '1rem' },
     modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem', boxSizing: 'border-box' },
     modalBox: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', maxWidth: 420, width: '100%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 48px rgba(0,0,0,0.3)' },
@@ -428,157 +496,236 @@ export default function TablaRapida() {
     tdAmount: { fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' },
     tdActions: { padding: '0.2rem 0.35rem', borderRight: 'none', whiteSpace: 'nowrap' },
     typeBadge: { fontWeight: 600, fontSize: '0.75rem' },
-    actionBtn: { padding: '0.22rem', margin: '0 0.1rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
-    totals: { marginBottom: '1rem', padding: '0.75rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center' },
+    excelActionBtn: { padding: '2px', margin: '0 2px', border: 'none', borderRadius: '6px', minWidth: 0, minHeight: 0, width: 26, height: 26, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity 0.15s' },
+    excelActionBtnView: { background: '#5dade2', color: '#fff' },
+    excelActionBtnEdit: { background: 'var(--btn-edit-bg)', color: 'var(--btn-edit-color)' },
+    excelActionBtnDelete: { background: 'var(--btn-delete-bg)', color: 'var(--btn-delete-color)' },
+    totals: { marginBottom: '1rem', padding: '0.75rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem' },
+    totalsLeft: { display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center' },
+    totalsMonthDivider: { width: 1, alignSelf: 'stretch', minHeight: 28, background: 'var(--border)' },
+    totalsRight: { display: 'flex', flexDirection: 'column', gap: '0.2rem', marginLeft: 'auto' },
+    totalMonthLabel: { fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 },
+    totalMonthRow: { display: 'flex', gap: '1rem' },
     totalItem: { display: 'flex', flexDirection: 'column', gap: '0.15rem' },
     totalLabel: { fontSize: '0.75rem', color: 'var(--text-muted)' },
     totalValue: { fontWeight: 700, fontSize: '1rem' },
     empty: { color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0, padding: '1.5rem' },
-    navMonth: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' },
+    navMonthRow: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.5rem' },
+    navMonth: { display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' },
     navMonthBtn: { width: '2.25rem', height: '2.25rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '1.25rem', cursor: 'pointer', padding: 0 },
     navMonthLabel: { fontSize: '1rem', fontWeight: 600, color: 'var(--text)', minWidth: '10rem', textAlign: 'center' },
+    categoryFilterWrap: { display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' },
+    categoryFilterLabel: { fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500, margin: 0 },
+    categoryFilterSelect: { padding: '0.35rem 0.6rem', fontSize: '0.9rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', minWidth: '8rem' },
+    filterCombo: { display: 'inline-flex', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)', marginBottom: '0.75rem' },
+    filterComboBtn: { padding: '0.4rem 0.9rem', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'background 0.15s, color 0.15s, opacity 0.15s' },
+    filterComboGastos: { background: 'var(--expense)', color: '#fff' },
+    filterComboIngresos: { background: 'var(--income)', color: '#fff' },
+    filterComboTodo: { background: 'var(--surface)', color: 'var(--text-muted)' },
+    filterComboActive: { opacity: 1, boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.5)' },
     dayTabsWrap: { display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.5rem' },
     dayTab: { padding: '0.4rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer' },
     dayTabActive: { background: 'var(--surface-hover)', color: 'var(--accent)', border: '1px solid var(--accent)' },
+    fijosApplyBtn: { padding: '0.35rem 0.75rem', fontSize: '0.85rem', fontWeight: 600, border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', background: 'var(--accent)', color: '#fff' },
+    trDetail: { background: 'var(--surface-hover)' },
+    tdDetail: { padding: '0.5rem 0.75rem', borderRight: 'none', verticalAlign: 'middle' },
+    detailRow: { display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' },
+    detailActions: { display: 'inline-flex', gap: '0.35rem', marginLeft: 'auto' },
   };
 
   const hasQuickTemplates = quickTemplatesExpense.length > 0 || quickTemplatesIncome.length > 0;
   const hasFixedExpenses = fixedExpenses.length > 0;
-  const hasQuickBar = hasQuickTemplates || hasFixedExpenses;
 
   return (
     <div className="page-tabla-rapida" style={styles.wrap}>
-      <p style={styles.hint} className="tabla-rapida-hint">
-        Anota gastos o ingresos aquí. Solo para esta tabla; no se descuenta de ninguna cuenta.
-      </p>
-
-      <div style={styles.navMonth} role="navigation" aria-label="Mes y año">
-        <button type="button" onClick={prevMonth} style={styles.navMonthBtn} className="touch-target" aria-label="Mes anterior">
-          ‹
+      <div style={styles.topButtons} role="group" aria-label="Acciones rápidas">
+        <button
+          type="button"
+          onClick={() => setShowQuickBar((v) => !v)}
+          style={{ ...styles.topBtn, ...(showQuickBar ? styles.topBtnActive : {}) }}
+          className="touch-target"
+          aria-pressed={showQuickBar}
+        >
+          Rápidos
         </button>
-        <span style={styles.navMonthLabel}>
-          {MONTHS[month - 1]} {year}
-        </span>
-        <button type="button" onClick={nextMonth} style={styles.navMonthBtn} className="touch-target" aria-label="Mes siguiente">
-          ›
+        <button
+          type="button"
+          onClick={() => setShowFijosModal(true)}
+          style={styles.topBtn}
+          className="touch-target"
+        >
+          Fijos
         </button>
-      </div>
-
-      <div className="tabla-rapida-totals" style={styles.totals}>
-        <div style={styles.totalItem}>
-          <span style={styles.totalLabel}>Total gastos</span>
-          <span style={{ ...styles.totalValue, color: 'var(--expense)' }}>{fmt(totals.expense)}</span>
-        </div>
-        <div style={styles.totalItem}>
-          <span style={styles.totalLabel}>Total ingresos</span>
-          <span style={{ ...styles.totalValue, color: 'var(--income)' }}>{fmt(totals.income)}</span>
-        </div>
-        <div style={styles.totalItem}>
-          <span style={styles.totalLabel}>Diferencia</span>
-          <span
-            style={{
-              ...styles.totalValue,
-              color: totals.balance >= 0 ? 'var(--income)' : 'var(--expense)',
-            }}
+        <div style={styles.addCombo} className="tabla-rapida-add-combo" role="group" aria-label="Añadir gasto o ingreso">
+          <button
+            type="button"
+            onClick={() => openAddModal('expense')}
+            style={{ ...styles.addComboBtn, ...styles.addComboMinus }}
+            className="touch-target"
+            title="Añadir gasto"
+            aria-label="Añadir gasto"
           >
-            {fmt(totals.balance)}
-          </span>
+            −
+          </button>
+          <button
+            type="button"
+            onClick={() => openAddModal('income')}
+            style={{ ...styles.addComboBtn, ...styles.addComboPlus }}
+            className="touch-target"
+            title="Añadir ingreso"
+            aria-label="Añadir ingreso"
+          >
+            +
+          </button>
         </div>
       </div>
 
-      {hasQuickBar && (
-        <>
-          <div style={styles.quickBarTabs} role="tablist" aria-label="Rápidos o Fijos">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={quickBarTab === 'rapidos'}
-              style={{ ...styles.quickBarTab, ...(quickBarTab === 'rapidos' ? styles.quickBarTabActive : {}) }}
-              className="touch-target"
-              onClick={() => setQuickBarTab('rapidos')}
-            >
-              Rápidos
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={quickBarTab === 'fijos'}
-              style={{ ...styles.quickBarTab, ...(quickBarTab === 'fijos' ? styles.quickBarTabActive : {}) }}
-              className="touch-target"
-              onClick={() => setQuickBarTab('fijos')}
-            >
-              Fijos
-            </button>
-          </div>
-          <div className="tabla-rapida-quick-bar" style={styles.quickBar}>
-            {quickBarTab === 'rapidos' && (
-              <>
-                {quickTemplatesExpense.map((t) => {
-                  const icon = t.icon || categories.find((c) => c.id === t.categoryId)?.icon || '💸';
-                  return (
-                    <button
-                      key={`expense-${t.id}`}
-                      type="button"
-                      onClick={() => applyQuickTemplate(t)}
-                      disabled={applyingQuickId !== null}
-                      style={{ ...styles.quickChip, ...styles.quickChipExpense }}
-                      className="touch-target"
-                      title={t.name}
-                    >
-                      <span style={styles.quickChipIcon}>{icon}</span>
-                      <span>{applyingQuickId === `expense-${t.id}` ? '…' : t.name}</span>
-                    </button>
-                  );
-                })}
-                {quickTemplatesIncome.map((t) => {
-                  const icon = t.icon || categories.find((c) => c.id === t.categoryId)?.icon || '💰';
-                  return (
-                    <button
-                      key={`income-${t.id}`}
-                      type="button"
-                      onClick={() => applyQuickTemplate(t)}
-                      disabled={applyingQuickId !== null}
-                      style={{ ...styles.quickChip, ...styles.quickChipIncome }}
-                      className="touch-target"
-                      title={t.name}
-                    >
-                      <span style={styles.quickChipIcon}>{icon}</span>
-                      <span>{applyingQuickId === `income-${t.id}` ? '…' : t.name}</span>
-                    </button>
-                  );
-                })}
-                {!hasQuickTemplates && <p style={styles.empty}>No hay plantillas rápidas.</p>}
-              </>
-            )}
-            {quickBarTab === 'fijos' && (
-              <>
-                {fixedExpenses.map((fe) => {
-                  const icon = categories.find((c) => c.id === fe.categoryId)?.icon || '📌';
-                  return (
-                    <button
-                      key={`fixed-${fe.id}`}
-                      type="button"
-                      onClick={() => applyFixedExpense(fe)}
-                      disabled={applyingQuickId !== null}
-                      style={{ ...styles.quickChip, ...styles.quickChipFixed }}
-                      className="touch-target"
-                      title={`${fe.name} – anotar manualmente`}
-                    >
-                      <span style={styles.quickChipIcon}>{icon}</span>
-                      <span>{applyingQuickId === `fixed-${fe.id}` ? '…' : fe.name}</span>
-                    </button>
-                  );
-                })}
-                {!hasFixedExpenses && <p style={styles.empty}>No hay gastos fijos.</p>}
-              </>
-            )}
-          </div>
-        </>
+      {showQuickBar && hasQuickTemplates && (
+        <div className="tabla-rapida-quick-bar" style={styles.quickBar}>
+          {quickTemplatesExpense.map((t) => {
+            const icon = t.icon || categories.find((c) => c.id === t.categoryId)?.icon || '💸';
+            return (
+              <button
+                key={`expense-${t.id}`}
+                type="button"
+                onClick={() => applyQuickTemplate(t)}
+                disabled={applyingQuickId !== null}
+                style={{ ...styles.quickChip, ...styles.quickChipExpense, ...styles.quickChipIconOnly }}
+                className="touch-target"
+                title={t.name}
+                aria-label={t.name}
+              >
+                <span style={styles.quickChipIcon}>{applyingQuickId === `expense-${t.id}` ? '…' : icon}</span>
+              </button>
+            );
+          })}
+          {quickTemplatesIncome.map((t) => {
+            const icon = t.icon || categories.find((c) => c.id === t.categoryId)?.icon || '💰';
+            return (
+              <button
+                key={`income-${t.id}`}
+                type="button"
+                onClick={() => applyQuickTemplate(t)}
+                disabled={applyingQuickId !== null}
+                style={{ ...styles.quickChip, ...styles.quickChipIncome, ...styles.quickChipIconOnly }}
+                className="touch-target"
+                title={t.name}
+                aria-label={t.name}
+              >
+                <span style={styles.quickChipIcon}>{applyingQuickId === `income-${t.id}` ? '…' : icon}</span>
+              </button>
+            );
+          })}
+        </div>
       )}
 
-      <button type="button" onClick={openAddModal} style={styles.addBtn} className="touch-target tabla-rapida-add-btn">
-        + Añadir anotación
-      </button>
+      <div className="tabla-rapida-totals" style={styles.totals}>
+        <div style={styles.totalsLeft}>
+          <div style={styles.totalItem}>
+            <span style={styles.totalLabel}>Total gastos</span>
+            <span style={{ ...styles.totalValue, color: 'var(--expense)' }}>{fmt(totals.expense)}</span>
+          </div>
+          <div style={styles.totalItem}>
+            <span style={styles.totalLabel}>Total ingresos</span>
+            <span style={{ ...styles.totalValue, color: 'var(--income)' }}>{fmt(totals.income)}</span>
+          </div>
+          <div style={styles.totalItem}>
+            <span style={styles.totalLabel}>Diferencia</span>
+            <span
+              style={{
+                ...styles.totalValue,
+                color: totals.balance >= 0 ? 'var(--income)' : 'var(--expense)',
+              }}
+            >
+              {fmt(totals.balance)}
+            </span>
+          </div>
+        </div>
+        <div style={styles.totalsMonthDivider} aria-hidden="true" />
+        <div style={styles.totalsRight}>
+          <span style={styles.totalMonthLabel}>Total del mes</span>
+          <div style={styles.totalMonthRow}>
+            <span style={{ ...styles.totalValue, color: 'var(--expense)', fontSize: '0.95rem' }}>{fmt(totalsMonth.expense)}</span>
+            <span style={{ ...styles.totalValue, color: 'var(--income)', fontSize: '0.95rem' }}>{fmt(totalsMonth.income)}</span>
+            <span style={{ ...styles.totalValue, color: totalsMonth.balance >= 0 ? 'var(--income)' : 'var(--expense)', fontSize: '0.95rem' }}>{fmt(totalsMonth.balance)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div style={styles.navMonthRow}>
+        <div style={styles.navMonth} role="navigation" aria-label="Mes y año">
+          <button type="button" onClick={prevMonth} style={styles.navMonthBtn} className="touch-target" aria-label="Mes anterior">
+            ‹
+          </button>
+          <span style={styles.navMonthLabel}>
+            {MONTHS[month - 1]} {year}
+          </span>
+          <button type="button" onClick={nextMonth} style={styles.navMonthBtn} className="touch-target" aria-label="Mes siguiente">
+            ›
+          </button>
+        </div>
+        <div style={styles.categoryFilterWrap}>
+          <label htmlFor="tabla-rapida-filter-cat" style={styles.categoryFilterLabel}>Categoría</label>
+          <select
+            id="tabla-rapida-filter-cat"
+            value={filterCategoryId}
+            onChange={(e) => setFilterCategoryId(e.target.value)}
+            style={styles.categoryFilterSelect}
+            aria-label="Filtrar por categoría"
+          >
+            <option value="">Todas</option>
+            <option value="none">Sin categoría</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div style={styles.filterCombo} role="group" aria-label="Filtrar por tipo">
+        <button
+          type="button"
+          onClick={() => setFilterType('expense')}
+          style={{
+            ...styles.filterComboBtn,
+            ...styles.filterComboGastos,
+            ...(filterType === 'expense' ? styles.filterComboActive : {}),
+          }}
+          className="touch-target"
+          title="Solo gastos"
+          aria-pressed={filterType === 'expense'}
+        >
+          Gastos
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilterType('income')}
+          style={{
+            ...styles.filterComboBtn,
+            ...styles.filterComboIngresos,
+            ...(filterType === 'income' ? styles.filterComboActive : {}),
+          }}
+          className="touch-target"
+          title="Solo ingresos"
+          aria-pressed={filterType === 'income'}
+        >
+          Ingresos
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilterType('all')}
+          style={{
+            ...styles.filterComboBtn,
+            ...styles.filterComboTodo,
+            ...(filterType === 'all' ? styles.filterComboActive : {}),
+          }}
+          className="touch-target"
+          title="Ver todo"
+          aria-pressed={filterType === 'all'}
+        >
+          Todo
+        </button>
+      </div>
 
       {showFormModal && (
         <div style={styles.modalOverlay} onClick={closeModal} role="presentation">
@@ -676,6 +823,61 @@ export default function TablaRapida() {
         </div>
       )}
 
+      {showFijosModal && (
+        <div style={styles.modalOverlay} onClick={() => setShowFijosModal(false)} role="presentation">
+          <div style={{ ...styles.modalBox, maxWidth: 520 }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="fijos-modal-title">
+            <div style={styles.modalHeader}>
+              <h2 id="fijos-modal-title" style={styles.modalTitle}>Gastos fijos</h2>
+              <button type="button" onClick={() => setShowFijosModal(false)} style={styles.modalCloseBtn} aria-label="Cerrar">×</button>
+            </div>
+            <div style={styles.modalBody}>
+              {fixedExpenses.length === 0 ? (
+                <p style={styles.empty}>No hay gastos fijos. Añádelos en la sección de gastos fijos.</p>
+              ) : (
+                <div style={styles.tableWrap}>
+                  <table style={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>Nombre</th>
+                        <th style={styles.th}>Categoría</th>
+                        <th style={styles.th}>Importe</th>
+                        <th style={{ ...styles.th, ...styles.thActions }}>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fixedExpenses.map((fe, idx) => {
+                        const cat = categories.find((c) => c.id === fe.categoryId);
+                        const catLabel = cat ? `${cat.icon || ''} ${cat.name}`.trim() : '—';
+                        const isApplying = applyingQuickId === `fixed-${fe.id}`;
+                        return (
+                          <tr key={fe.id} style={{ ...styles.tr, ...(idx % 2 === 1 ? styles.trAlt : {}) }}>
+                            <td style={styles.td}>{fe.name}</td>
+                            <td style={styles.td}>{catLabel}</td>
+                            <td style={{ ...styles.td, ...styles.tdAmount, color: 'var(--expense)' }}>{fmt(fe.amount)}</td>
+                            <td style={styles.tdActions}>
+                              <button
+                                type="button"
+                                onClick={() => applyFixedExpense(fe)}
+                                disabled={applyingQuickId !== null}
+                                style={styles.fijosApplyBtn}
+                                className="touch-target"
+                                title="Añadir a la tabla rápida"
+                              >
+                                {isApplying ? '…' : 'Añadir'}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <Loader />
       ) : (
@@ -689,7 +891,7 @@ export default function TablaRapida() {
               className="touch-target"
               onClick={() => selectDay('')}
             >
-              Todo el mes
+              All
             </button>
             {daysWithEntries.map((dayNum) => {
               const dayStr = String(dayNum);
@@ -709,8 +911,8 @@ export default function TablaRapida() {
               );
             })}
           </div>
-          <div className="tabla-rapida-table-wrap" style={styles.tableWrap}>
-            {displayedEntries.length === 0 ? (
+          <div className={`tabla-rapida-table-wrap ${isNarrowScreen ? 'tabla-rapida-narrow' : ''}`} style={styles.tableWrap}>
+            {filteredDisplayedEntries.length === 0 ? (
               <p style={styles.empty}>
                 {entriesInMonth.length === 0
                   ? `No hay anotaciones en ${MONTHS[month - 1]} ${year}. Usa los rápidos o el formulario.`
@@ -728,79 +930,131 @@ export default function TablaRapida() {
                     <th style={styles.th} onClick={() => handleSort('name')} title="Ordenar por concepto">
                       Concepto {sortBy === 'name' && (sortDir === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th style={styles.th} onClick={() => handleSort('category')} title="Ordenar por categoría">
+                    <th className="tabla-rapida-col-detail" style={styles.th} onClick={() => handleSort('category')} title="Ordenar por categoría">
                       Categoría {sortBy === 'category' && (sortDir === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th style={styles.th} onClick={() => handleSort('type')} title="Ordenar por tipo">
+                    <th className="tabla-rapida-col-detail" style={styles.th} onClick={() => handleSort('type')} title="Ordenar por tipo">
                       Tipo {sortBy === 'type' && (sortDir === 'asc' ? '↑' : '↓')}
                     </th>
                     <th style={styles.th} onClick={() => handleSort('amount')} title="Ordenar por importe">
                       Importe {sortBy === 'amount' && (sortDir === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th style={{ ...styles.th, ...styles.thActions }}>Acciones</th>
+                    <th style={{ ...styles.th, ...styles.thActions }}>{isNarrowScreen ? '' : 'Acciones'}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {displayedEntries.map((row, idx) => (
-                    <tr
-                      key={row.id}
-                      style={{ ...styles.tr, ...(idx % 2 === 1 ? styles.trAlt : {}) }}
-                    >
-                      <td style={styles.td}>
-                        {row.date
-                          ? new Date(row.date + 'T12:00:00').toLocaleDateString('es', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
-                            })
-                          : ''}
-                      </td>
-                      <td style={styles.td}>{row.name}</td>
-                      <td style={styles.td}>{getCategoryName(row.categoryId)}</td>
-                      <td style={styles.td}>
-                        <span
-                          style={{
-                            ...styles.typeBadge,
-                            color: row.type === 'income' ? 'var(--income)' : 'var(--expense)',
-                          }}
+                  {filteredDisplayedEntries.map((row, idx) => {
+                    const isExpanded = expandedRowId === row.id;
+                    return (
+                      <Fragment key={row.id}>
+                        <tr
+                          style={{ ...styles.tr, ...(idx % 2 === 1 ? styles.trAlt : {}) }}
                         >
-                          {row.type === 'income' ? 'Ingreso' : 'Gasto'}
-                        </span>
-                      </td>
-                      <td
-                        style={{
-                          ...styles.td,
-                          ...styles.tdAmount,
-                          color: row.type === 'income' ? 'var(--income)' : 'var(--expense)',
-                        }}
-                      >
-                        {row.type === 'income' ? '+' : '-'}
-                        {fmt(row.amount)}
-                      </td>
-                      <td style={styles.tdActions}>
-                        <button
-                          type="button"
-                          className="excel-action-btn"
-                          onClick={() => startEdit(row)}
-                          style={styles.actionBtn}
-                          title="Editar"
-                          aria-label="Editar"
-                        >
-                          <IconEdit size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="excel-action-btn"
-                          onClick={() => deleteEntry(row.id)}
-                          style={styles.actionBtn}
-                          title="Eliminar"
-                          aria-label="Eliminar"
-                        >
-                          <IconTrash size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                          <td style={styles.td}>
+                            {row.date
+                              ? new Date(row.date + 'T12:00:00').toLocaleDateString('es', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                })
+                              : ''}
+                          </td>
+                          <td style={styles.td}>{row.name}</td>
+                          <td className="tabla-rapida-col-detail" style={styles.td}>{getCategoryName(row.categoryId)}</td>
+                          <td className="tabla-rapida-col-detail" style={styles.td}>
+                            <span
+                              style={{
+                                ...styles.typeBadge,
+                                color: row.type === 'income' ? 'var(--income)' : 'var(--expense)',
+                              }}
+                            >
+                              {row.type === 'income' ? 'Ingreso' : 'Gasto'}
+                            </span>
+                          </td>
+                          <td
+                            style={{
+                              ...styles.td,
+                              ...styles.tdAmount,
+                              color: row.type === 'income' ? 'var(--income)' : 'var(--expense)',
+                            }}
+                          >
+                            {row.type === 'income' ? '+' : '-'}
+                            {fmt(row.amount)}
+                          </td>
+                          <td style={styles.tdActions}>
+                            {isNarrowScreen ? (
+                              <button
+                                type="button"
+                                onClick={() => setExpandedRowId((prev) => (prev === row.id ? null : row.id))}
+                                style={{ ...styles.excelActionBtn, ...styles.excelActionBtnView }}
+                                className="excel-action-btn touch-target"
+                                aria-expanded={isExpanded}
+                                title={isExpanded ? 'Ocultar detalle' : 'Ver detalle'}
+                                aria-label={isExpanded ? 'Ocultar detalle' : 'Ver detalle'}
+                              >
+                                <IconEye size={14} />
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  className="excel-action-btn"
+                                  onClick={() => startEdit(row)}
+                                  style={{ ...styles.excelActionBtn, ...styles.excelActionBtnEdit }}
+                                  title="Editar"
+                                  aria-label="Editar"
+                                >
+                                  <IconEdit size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="excel-action-btn"
+                                  onClick={() => deleteEntry(row.id)}
+                                  style={{ ...styles.excelActionBtn, ...styles.excelActionBtnDelete }}
+                                  title="Eliminar"
+                                  aria-label="Eliminar"
+                                >
+                                  <IconTrash size={14} />
+                                </button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                        {isNarrowScreen && isExpanded && (
+                          <tr key={`${row.id}-detail`} style={{ ...styles.tr, ...styles.trDetail }}>
+                            <td colSpan={6} style={styles.tdDetail}>
+                              <div style={styles.detailRow}>
+                                <span><strong>Categoría:</strong> {getCategoryName(row.categoryId)}</span>
+                                <span><strong>Tipo:</strong> {row.type === 'income' ? 'Ingreso' : 'Gasto'}</span>
+                                <span style={styles.detailActions}>
+                                  <button
+                                    type="button"
+                                    className="excel-action-btn"
+                                    onClick={() => startEdit(row)}
+                                    style={{ ...styles.excelActionBtn, ...styles.excelActionBtnEdit }}
+                                    title="Editar"
+                                    aria-label="Editar"
+                                  >
+                                    <IconEdit size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="excel-action-btn"
+                                    onClick={() => deleteEntry(row.id)}
+                                    style={{ ...styles.excelActionBtn, ...styles.excelActionBtnDelete }}
+                                    title="Eliminar"
+                                    aria-label="Eliminar"
+                                  >
+                                    <IconTrash size={14} />
+                                  </button>
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

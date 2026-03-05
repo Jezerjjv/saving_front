@@ -1830,8 +1830,7 @@ input[type="date"].input-date-picker {
   background: var(--surface-hover);
 }
 .page-tabla-rapida .excel-action-btn:hover {
-  color: var(--accent);
-  border-color: var(--accent);
+  opacity: 0.9;
 }
 
 /* Tabla rápida: móvil menos apiñado */
@@ -1875,6 +1874,9 @@ input[type="date"].input-date-picker {
     box-sizing: border-box;
     -webkit-overflow-scrolling: touch;
     border-radius: var(--radius);
+  }
+  .tabla-rapida-narrow .tabla-rapida-col-detail {
+    display: none !important;
   }
   .page-tabla-rapida .tabla-rapida-excel {
     font-size: 0.85rem;
