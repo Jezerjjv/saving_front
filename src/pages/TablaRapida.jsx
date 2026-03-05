@@ -13,6 +13,20 @@ const MONTHS = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
+const WEEKDAY_LETTERS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']; // Lunes a Domingo
+
+function getWeeksForMonth(year, month) {
+  const firstWeekday = (new Date(year, month - 1, 1).getDay() + 6) % 7; // 0 = Lunes
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const slots = [];
+  for (let i = 0; i < firstWeekday; i++) slots.push(null);
+  for (let d = 1; d <= daysInMonth; d++) slots.push(d);
+  while (slots.length % 7 !== 0) slots.push(null);
+  const weeks = [];
+  for (let i = 0; i < slots.length; i += 7) weeks.push(slots.slice(i, i + 7));
+  return weeks;
+}
+
 const TYPES = [
   { id: 'expense', label: 'Gasto' },
   { id: 'income', label: 'Ingreso' },
@@ -56,10 +70,25 @@ export default function TablaRapida() {
   const [showQuickBar, setShowQuickBar] = useState(true);
   const [filterType, setFilterType] = useState('all'); // 'all' | 'expense' | 'income'
   const [filterCategoryId, setFilterCategoryId] = useState(''); // '' = todas
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
+  const [demoDataEnabled, setDemoDataEnabled] = useState(false);
   const [expandedRowId, setExpandedRowId] = useState(null);
   const [isNarrowScreen, setIsNarrowScreen] = useState(typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
   const dateInputRef = useRef(null);
+  const categoryDropdownRef = useRef(null);
   const hasSetDefaultDayForMonth = useRef(false);
+
+  useEffect(() => {
+    if (!categoryDropdownOpen) return;
+    const handleClickOutside = (e) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target)) {
+        setCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [categoryDropdownOpen]);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 640px)');
@@ -171,7 +200,7 @@ export default function TablaRapida() {
       .catch(() => {});
   }, []);
 
-  const entriesInMonth = useMemo(() => {
+  const baseEntriesInMonth = useMemo(() => {
     const m = String(month).padStart(2, '0');
     const y = String(year);
     return entries.filter((e) => {
@@ -180,6 +209,78 @@ export default function TablaRapida() {
       return em === m && ey === y;
     });
   }, [entries, month, year]);
+
+  const demoEntriesForMonth = useMemo(() => {
+    const m = String(month).padStart(2, '0');
+    const y = String(year);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const list = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = String(day).padStart(2, '0');
+      const dateStr = `${y}-${m}-${d}`;
+      list.push({
+        id: `demo-${y}-${m}-${d}-1`,
+        date: dateStr,
+        name: `Prueba día ${day}`,
+        amount: 5 + (day % 10) * 2.5,
+        type: 'expense',
+        categoryId: null,
+      });
+      if (day % 3 === 0) {
+        list.push({
+          id: `demo-${y}-${m}-${d}-2`,
+          date: dateStr,
+          name: `Ingreso prueba ${day}`,
+          amount: 20,
+          type: 'income',
+          categoryId: null,
+        });
+      }
+    }
+    return list;
+  }, [month, year]);
+
+  const entriesInMonth = useMemo(() => {
+    if (!demoDataEnabled) return baseEntriesInMonth;
+    return [...baseEntriesInMonth, ...demoEntriesForMonth].sort((a, b) =>
+      (a.date || '').localeCompare(b.date || '')
+    );
+  }, [baseEntriesInMonth, demoEntriesForMonth, demoDataEnabled]);
+
+  const monthWeeks = useMemo(() => getWeeksForMonth(year, month), [year, month]);
+
+  const getWeekIndexForDay = (dayStr) => {
+    if (dayStr === '') {
+      if (month === currentMonth && year === currentYear) {
+        const todayNum = now.getDate();
+        const idx = monthWeeks.findIndex((w) => w.includes(todayNum));
+        return idx >= 0 ? idx : 0;
+      }
+      return 0;
+    }
+    const d = Number(dayStr);
+    const idx = monthWeeks.findIndex((w) => w.includes(d));
+    return idx >= 0 ? idx : 0;
+  };
+
+  const displayWeekIndex = getWeekIndexForDay(selectedDay);
+  const displayWeek = monthWeeks[displayWeekIndex] || monthWeeks[0] || [];
+
+  const goPrevWeek = () => {
+    const idx = getWeekIndexForDay(selectedDay);
+    if (idx <= 0) return;
+    const week = monthWeeks[idx - 1];
+    const firstDay = week.find((d) => d !== null);
+    if (firstDay !== undefined) selectDay(String(firstDay));
+  };
+
+  const goNextWeek = () => {
+    const idx = getWeekIndexForDay(selectedDay);
+    if (idx >= monthWeeks.length - 1) return;
+    const week = monthWeeks[idx + 1];
+    const firstDay = week.find((d) => d !== null);
+    if (firstDay !== undefined) selectDay(String(firstDay));
+  };
 
   const daysWithEntries = useMemo(() => {
     const days = new Set();
@@ -203,9 +304,7 @@ export default function TablaRapida() {
       noDayInUrl &&
       month === currentMonth &&
       year === currentYear &&
-      !hasSetDefaultDayForMonth.current &&
-      daysWithEntries.length > 0 &&
-      daysWithEntries.includes(todayNum)
+      !hasSetDefaultDayForMonth.current
     ) {
       setSelectedDay(String(todayNum));
       setSearchParams((p) => {
@@ -217,7 +316,7 @@ export default function TablaRapida() {
       });
       hasSetDefaultDayForMonth.current = true;
     }
-  }, [month, year, dayParam, daysWithEntries]);
+  }, [month, year, dayParam]);
 
   const displayedEntries = useMemo(() => {
     let list = entriesInMonth;
@@ -250,6 +349,23 @@ export default function TablaRapida() {
     }
     return list;
   }, [displayedEntries, filterType, filterCategoryId]);
+
+  const categoryFilterOptions = useMemo(() => {
+    const base = [
+      { value: '', label: 'Todas' },
+      { value: 'none', label: 'Sin categoría' },
+      ...categories.map((c) => ({ value: String(c.id), label: `${c.icon || ''} ${c.name}`.trim() })),
+    ];
+    const q = (categorySearchQuery || '').trim().toLowerCase();
+    if (!q) return base;
+    return base.filter((o) => o.label.toLowerCase().includes(q));
+  }, [categories, categorySearchQuery]);
+
+  const filterCategoryLabel = filterCategoryId === ''
+    ? 'Todas'
+    : filterCategoryId === 'none'
+      ? 'Sin categoría'
+      : (categories.find((c) => String(c.id) === filterCategoryId)?.name) || 'Todas';
 
   const totals = useMemo(() => {
     let expense = 0;
@@ -497,7 +613,7 @@ export default function TablaRapida() {
     tdActions: { padding: '0.2rem 0.35rem', borderRight: 'none', whiteSpace: 'nowrap' },
     typeBadge: { fontWeight: 600, fontSize: '0.75rem' },
     excelActionBtn: { padding: '2px', margin: '0 2px', border: 'none', borderRadius: '6px', minWidth: 0, minHeight: 0, width: 26, height: 26, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity 0.15s' },
-    excelActionBtnView: { background: '#5dade2', color: '#fff' },
+    excelActionBtnView: { background: 'var(--income)', color: '#fff' },
     excelActionBtnEdit: { background: 'var(--btn-edit-bg)', color: 'var(--btn-edit-color)' },
     excelActionBtnDelete: { background: 'var(--btn-delete-bg)', color: 'var(--btn-delete-color)' },
     totals: { marginBottom: '1rem', padding: '0.75rem 1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem' },
@@ -510,22 +626,55 @@ export default function TablaRapida() {
     totalLabel: { fontSize: '0.75rem', color: 'var(--text-muted)' },
     totalValue: { fontWeight: 700, fontSize: '1rem' },
     empty: { color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0, padding: '1.5rem' },
-    navMonthRow: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.5rem' },
-    navMonth: { display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' },
-    navMonthBtn: { width: '2.25rem', height: '2.25rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '1.25rem', cursor: 'pointer', padding: 0 },
-    navMonthLabel: { fontSize: '1rem', fontWeight: 600, color: 'var(--text)', minWidth: '10rem', textAlign: 'center' },
-    categoryFilterWrap: { display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' },
+    navMonthRow: { display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', marginBottom: 0 },
+    navMonthBlock: { display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' },
+    navMonth: { display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' },
+    navMonthBtn: { width: '1.5rem', height: '1.5rem', minWidth: '1.5rem', minHeight: '1.5rem', boxSizing: 'border-box', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '0.75rem', cursor: 'pointer', padding: 0 },
+    navMonthLabel: { fontSize: '1rem', fontWeight: 600, color: 'var(--text)', minWidth: '8rem', textAlign: 'left' },
+    categoryFilterWrap: { display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' },
     categoryFilterLabel: { fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500, margin: 0 },
-    categoryFilterSelect: { padding: '0.35rem 0.6rem', fontSize: '0.9rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', minWidth: '8rem' },
+    categoryFilterSelect: { padding: '0.2rem 0.45rem', fontSize: '0.8rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', minWidth: '7rem', minHeight: '1.5rem', boxSizing: 'border-box', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center' },
+    categoryDropdown: { position: 'relative', overflow: 'visible' },
+    categoryDropdownPanel: { position: 'absolute', top: '100%', left: 0, marginTop: '0.2rem', minWidth: '12rem', maxWidth: '20rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 50, padding: '0.35rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' },
+    categoryDropdownSearch: { padding: '0.4rem 0.5rem', fontSize: '0.85rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg)', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box', flexShrink: 0 },
+    categoryDropdownList: { overflowY: 'auto', minHeight: '8rem', maxHeight: '14rem' },
+    categoryDropdownOption: { display: 'block', width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.85rem', textAlign: 'left', border: 'none', borderRadius: 'var(--radius)', background: 'transparent', color: 'var(--text)', cursor: 'pointer' },
+    categoryDropdownOptionHover: { background: 'var(--surface-hover)' },
     filterCombo: { display: 'inline-flex', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)', marginBottom: '0.75rem' },
     filterComboBtn: { padding: '0.4rem 0.9rem', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'background 0.15s, color 0.15s, opacity 0.15s' },
     filterComboGastos: { background: 'var(--expense)', color: '#fff' },
     filterComboIngresos: { background: 'var(--income)', color: '#fff' },
     filterComboTodo: { background: 'var(--surface)', color: 'var(--text-muted)' },
     filterComboActive: { opacity: 1, boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.5)' },
+    filterClearBtn: { padding: '0.2rem 0.45rem', fontSize: '0.8rem', fontWeight: 600, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', boxSizing: 'border-box', height: '100%', minHeight: '1.5rem' },
     dayTabsWrap: { display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.5rem' },
+    demoDataToggle: { marginBottom: '0.5rem' },
+    demoDataBtn: { padding: '0.35rem 0.6rem', fontSize: '0.8rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' },
+    demoDataBtnActive: { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' },
     dayTab: { padding: '0.4rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer' },
     dayTabActive: { background: 'var(--surface-hover)', color: 'var(--accent)', border: '1px solid var(--accent)' },
+    navAndWeekRow: { display: 'grid', gridTemplateColumns: 'auto 1fr auto', gridTemplateRows: 'auto 1.5rem', gap: '0.35rem 0.75rem', marginBottom: '0.5rem', alignItems: 'center' },
+    navAndWeekRowLabelMonth: { gridColumn: 1, gridRow: 1 },
+    navAndWeekRowControlsMonth: { gridColumn: 1, gridRow: 2, display: 'flex', alignItems: 'center', height: '1.5rem' },
+    navAndWeekRowLabelWeek: { gridColumn: 2, gridRow: 1 },
+    navAndWeekRowControlsWeek: { gridColumn: 2, gridRow: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '1.5rem' },
+    navAndWeekRowLabelCat: { gridColumn: 3, gridRow: 1 },
+    navAndWeekRowControlsCat: { gridColumn: 3, gridRow: 2, display: 'flex', alignItems: 'center', gap: '0.35rem', height: '1.5rem' },
+    weekStripWrap: { display: 'flex', justifyContent: 'center', width: '100%', marginBottom: 0 },
+    weekStripOuter: { display: 'inline-flex', alignItems: 'center', gap: '0.2rem', height: '1.5rem' },
+    weekStripNavBtn: { width: '1.5rem', height: '1.5rem', minWidth: '1.5rem', minHeight: '1.5rem', boxSizing: 'border-box', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '0.75rem', cursor: 'pointer', padding: 0 },
+    weekStripSingle: { display: 'grid', gridTemplateColumns: 'auto repeat(7, 1.5rem)', gridTemplateRows: 'auto auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', width: 'fit-content', padding: 0, height: '1.5rem', boxSizing: 'border-box' },
+    weekBlockRow: { display: 'contents' },
+    weekCell: { width: '1.5rem', minWidth: '1.5rem', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0.01rem 0.02rem', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.5rem', borderRight: '1px solid var(--border)', gap: 0, overflow: 'hidden', lineHeight: 1 },
+    weekCellColHighlight: { background: 'var(--surface-hover)' },
+    weekCellAll: { gridColumn: 1, gridRow: '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '1.5rem', minWidth: '1.5rem', cursor: 'pointer', background: 'var(--surface)', borderRight: '1px solid var(--border)', padding: '0.04rem' },
+    weekCellAllLabel: { color: 'var(--text-muted)', fontWeight: 600, lineHeight: 1, fontSize: '0.5rem' },
+    weekCellLast: { borderRight: 'none' },
+    weekCellLetter: { color: 'var(--text-muted)', fontWeight: 600, lineHeight: 1, fontSize: '0.5rem' },
+    weekCellDate: { marginTop: 0, width: '0.65rem', height: '0.65rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', color: 'var(--text)', fontSize: '0.5rem', cursor: 'pointer', padding: 0, boxSizing: 'border-box', lineHeight: 1 },
+    weekCellDateHighlight: { color: 'var(--accent)', fontWeight: 700 },
+    weekCellDateToday: { color: 'var(--income)', fontWeight: 700 },
+    weekCellDateEmpty: { visibility: 'hidden', pointerEvents: 'none' },
     fijosApplyBtn: { padding: '0.35rem 0.75rem', fontSize: '0.85rem', fontWeight: 600, border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', background: 'var(--accent)', color: '#fff' },
     trDetail: { background: 'var(--surface-hover)' },
     tdDetail: { padding: '0.5rem 0.75rem', borderRight: 'none', verticalAlign: 'middle' },
@@ -620,7 +769,7 @@ export default function TablaRapida() {
       )}
 
       <div className="tabla-rapida-totals" style={styles.totals}>
-        <div style={styles.totalsLeft}>
+        <div className="tabla-rapida-totals-left" style={styles.totalsLeft}>
           <div style={styles.totalItem}>
             <span style={styles.totalLabel}>Total gastos</span>
             <span style={{ ...styles.totalValue, color: 'var(--expense)' }}>{fmt(totals.expense)}</span>
@@ -641,44 +790,14 @@ export default function TablaRapida() {
             </span>
           </div>
         </div>
-        <div style={styles.totalsMonthDivider} aria-hidden="true" />
-        <div style={styles.totalsRight}>
+        <div className="tabla-rapida-totals-divider" style={styles.totalsMonthDivider} aria-hidden="true" />
+        <div className="tabla-rapida-totals-right" style={styles.totalsRight}>
           <span style={styles.totalMonthLabel}>Total del mes</span>
-          <div style={styles.totalMonthRow}>
+          <div className="tabla-rapida-total-month-row" style={styles.totalMonthRow}>
             <span style={{ ...styles.totalValue, color: 'var(--expense)', fontSize: '0.95rem' }}>{fmt(totalsMonth.expense)}</span>
             <span style={{ ...styles.totalValue, color: 'var(--income)', fontSize: '0.95rem' }}>{fmt(totalsMonth.income)}</span>
             <span style={{ ...styles.totalValue, color: totalsMonth.balance >= 0 ? 'var(--income)' : 'var(--expense)', fontSize: '0.95rem' }}>{fmt(totalsMonth.balance)}</span>
           </div>
-        </div>
-      </div>
-
-      <div style={styles.navMonthRow}>
-        <div style={styles.navMonth} role="navigation" aria-label="Mes y año">
-          <button type="button" onClick={prevMonth} style={styles.navMonthBtn} className="touch-target" aria-label="Mes anterior">
-            ‹
-          </button>
-          <span style={styles.navMonthLabel}>
-            {MONTHS[month - 1]} {year}
-          </span>
-          <button type="button" onClick={nextMonth} style={styles.navMonthBtn} className="touch-target" aria-label="Mes siguiente">
-            ›
-          </button>
-        </div>
-        <div style={styles.categoryFilterWrap}>
-          <label htmlFor="tabla-rapida-filter-cat" style={styles.categoryFilterLabel}>Categoría</label>
-          <select
-            id="tabla-rapida-filter-cat"
-            value={filterCategoryId}
-            onChange={(e) => setFilterCategoryId(e.target.value)}
-            style={styles.categoryFilterSelect}
-            aria-label="Filtrar por categoría"
-          >
-            <option value="">Todas</option>
-            <option value="none">Sin categoría</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-            ))}
-          </select>
         </div>
       </div>
 
@@ -882,35 +1001,130 @@ export default function TablaRapida() {
         <Loader />
       ) : (
         <>
-          <div style={styles.dayTabsWrap} role="tablist" aria-label="Día del mes">
+          <div style={styles.demoDataToggle}>
             <button
               type="button"
-              role="tab"
-              aria-selected={selectedDay === ''}
-              style={{ ...styles.dayTab, ...(selectedDay === '' ? styles.dayTabActive : {}) }}
+              onClick={() => setDemoDataEnabled((v) => !v)}
+              style={{ ...styles.demoDataBtn, ...(demoDataEnabled ? styles.demoDataBtnActive : {}) }}
               className="touch-target"
-              onClick={() => selectDay('')}
+              title="Activar datos de prueba para todos los días del mes (vista móvil)"
+              aria-pressed={demoDataEnabled}
             >
-              All
+              {demoDataEnabled ? '✓ Datos de prueba activos' : 'Datos de prueba (todos los días)'}
             </button>
-            {daysWithEntries.map((dayNum) => {
-              const dayStr = String(dayNum);
-              const isSelected = selectedDay === dayStr;
-              return (
-                <button
-                  key={dayNum}
-                  type="button"
-                  role="tab"
-                  aria-selected={isSelected}
-                  style={{ ...styles.dayTab, ...(isSelected ? styles.dayTabActive : {}) }}
-                  className="touch-target"
-                  onClick={() => selectDay(dayStr)}
-                >
-                  {dayNum}
-                </button>
-              );
-            })}
           </div>
+          {!loading && (
+            <div className="tabla-rapida-nav-and-week-row" style={styles.navAndWeekRow}>
+              {/* Fila 1: etiquetas — Fila 2: controles, misma altura 2.5rem */}
+              <span className="tabla-rapida-nav-month-label" style={{ ...styles.navMonthLabel, ...styles.navAndWeekRowLabelMonth }}>{MONTHS[month - 1]} {year}</span>
+              <div style={styles.navAndWeekRowControlsMonth} role="navigation" aria-label="Mes y año">
+                <button type="button" onClick={prevMonth} style={styles.navMonthBtn} className="touch-target tabla-rapida-nav-arrow-btn" aria-label="Mes anterior">‹</button>
+                <button type="button" onClick={nextMonth} style={styles.navMonthBtn} className="touch-target tabla-rapida-nav-arrow-btn" aria-label="Mes siguiente">›</button>
+              </div>
+              <span style={styles.navAndWeekRowLabelWeek} aria-hidden="true" />
+              <div className="tabla-rapida-week-strip-wrap" style={styles.navAndWeekRowControlsWeek}>
+                <div style={styles.weekStripOuter} role="tablist" aria-label="Día del mes">
+                  <button type="button" onClick={goPrevWeek} style={styles.weekStripNavBtn} className="touch-target tabla-rapida-nav-arrow-btn" aria-label="Semana anterior" title="Semana anterior">‹</button>
+                  <div style={styles.weekStripSingle} className="tabla-rapida-week-strip">
+                    <div
+                      style={{ ...styles.weekCellAll, ...(selectedDay === '' ? styles.weekCellColHighlight : {}) }}
+                      onClick={() => selectDay('')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectDay(''); } }}
+                      aria-selected={selectedDay === ''}
+                      aria-label="Ver todos los días"
+                    >
+                      <span style={{ ...styles.weekCellAllLabel, ...(selectedDay === '' ? { color: 'var(--accent)', fontWeight: 700 } : {}) }}>All</span>
+                    </div>
+                    {WEEKDAY_LETTERS.map((letter, col) => {
+                      const dayNum = displayWeek[col];
+                      const isColSelected = dayNum !== null && selectedDay === String(dayNum);
+                      const isColToday = dayNum !== null && month === currentMonth && year === currentYear && dayNum === now.getDate();
+                      const colHighlight = isColSelected || isColToday;
+                      return (
+                        <div key={`l-${col}`} style={{ ...styles.weekCell, ...(col === 6 ? styles.weekCellLast : {}), ...(colHighlight ? styles.weekCellColHighlight : {}) }}>
+                          <span style={styles.weekCellLetter}>{letter}</span>
+                        </div>
+                      );
+                    })}
+                    {displayWeek.map((dayNum, col) => {
+                      const isToday = dayNum !== null && month === currentMonth && year === currentYear && dayNum === now.getDate();
+                      const isSelected = dayNum !== null && selectedDay === String(dayNum);
+                      const colHighlight = isSelected || isToday;
+                      return (
+                        <div key={`d-${col}`} style={{ ...styles.weekCell, ...(col === 6 ? styles.weekCellLast : {}), ...(colHighlight ? styles.weekCellColHighlight : {}) }}>
+                          {dayNum !== null ? (
+                            <button
+                              type="button"
+                              role="tab"
+                              aria-selected={isSelected}
+                              aria-current={isToday ? 'date' : undefined}
+                              style={{ ...styles.weekCellDate, ...(isSelected ? styles.weekCellDateHighlight : isToday ? styles.weekCellDateToday : {}) }}
+                              className="touch-target"
+                              onClick={() => selectDay(String(dayNum))}
+                            >
+                              {dayNum}
+                            </button>
+                          ) : (
+                            <span style={styles.weekCellDateEmpty} aria-hidden="true">.</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button type="button" onClick={goNextWeek} style={styles.weekStripNavBtn} className="touch-target tabla-rapida-nav-arrow-btn" aria-label="Semana siguiente" title="Semana siguiente">›</button>
+                </div>
+              </div>
+              <label className="tabla-rapida-category-label" style={{ ...styles.categoryFilterLabel, ...styles.navAndWeekRowLabelCat }}>Categoría</label>
+              <div className="tabla-rapida-category-filter" style={styles.navAndWeekRowControlsCat}>
+                <div ref={categoryDropdownRef} style={styles.categoryDropdown}>
+                  <button
+                    type="button"
+                    id="tabla-rapida-filter-cat"
+                    onClick={() => setCategoryDropdownOpen((o) => !o)}
+                    className="tabla-rapida-category-select touch-target"
+                    style={styles.categoryFilterSelect}
+                    aria-label="Filtrar por categoría"
+                    aria-expanded={categoryDropdownOpen}
+                    aria-haspopup="listbox"
+                  >
+                    {filterCategoryLabel}
+                  </button>
+                  {categoryDropdownOpen && (
+                    <div style={styles.categoryDropdownPanel} role="listbox">
+                      <input
+                        type="text"
+                        placeholder="Buscar categoría..."
+                        value={categorySearchQuery}
+                        onChange={(e) => setCategorySearchQuery(e.target.value)}
+                        style={styles.categoryDropdownSearch}
+                        autoFocus
+                        aria-label="Buscar categoría"
+                      />
+                      <div style={styles.categoryDropdownList}>
+                        {categoryFilterOptions.map((opt) => (
+                          <button
+                            key={opt.value === '' ? 'all' : opt.value}
+                            type="button"
+                            role="option"
+                            aria-selected={filterCategoryId === opt.value}
+                            style={styles.categoryDropdownOption}
+                            className="touch-target tabla-rapida-cat-option"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => { setFilterCategoryId(opt.value); setCategoryDropdownOpen(false); setCategorySearchQuery(''); }}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button type="button" onClick={() => { setFilterType('all'); setFilterCategoryId(''); }} style={styles.filterClearBtn} className="touch-target" title="Quitar filtros y mostrar todo" aria-label="Limpiar filtros">Limpiar</button>
+              </div>
+            </div>
+          )}
           <div className={`tabla-rapida-table-wrap ${isNarrowScreen ? 'tabla-rapida-narrow' : ''}`} style={styles.tableWrap}>
             {filteredDisplayedEntries.length === 0 ? (
               <p style={styles.empty}>
@@ -982,7 +1196,9 @@ export default function TablaRapida() {
                             {fmt(row.amount)}
                           </td>
                           <td style={styles.tdActions}>
-                            {isNarrowScreen ? (
+                            {String(row.id).startsWith('demo-') ? (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Demo</span>
+                            ) : isNarrowScreen ? (
                               <button
                                 type="button"
                                 onClick={() => setExpandedRowId((prev) => (prev === row.id ? null : row.id))}
@@ -1020,7 +1236,7 @@ export default function TablaRapida() {
                             )}
                           </td>
                         </tr>
-                        {isNarrowScreen && isExpanded && (
+                        {isNarrowScreen && isExpanded && !String(row.id).startsWith('demo-') && (
                           <tr key={`${row.id}-detail`} style={{ ...styles.tr, ...styles.trDetail }}>
                             <td colSpan={6} style={styles.tdDetail}>
                               <div style={styles.detailRow}>

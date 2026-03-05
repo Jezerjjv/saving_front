@@ -1832,6 +1832,9 @@ input[type="date"].input-date-picker {
 .page-tabla-rapida .excel-action-btn:hover {
   opacity: 0.9;
 }
+.page-tabla-rapida .tabla-rapida-cat-option:hover {
+  background: var(--surface-hover) !important;
+}
 
 /* Tabla rápida: móvil menos apiñado */
 @media (max-width: 640px) {
@@ -1865,6 +1868,79 @@ input[type="date"].input-date-picker {
     padding: 0.65rem 1rem !important;
     box-sizing: border-box;
   }
+  /* Móvil: mes y filtros alineados en una fila; semana en una fila sola debajo (6 celdas: 1=label mes, 2=controles mes, 3=vacío, 4=semana, 5=label cat, 6=controles cat) */
+  .page-tabla-rapida .tabla-rapida-nav-and-week-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-rows: auto auto auto !important;
+    gap: 0.5rem !important;
+    align-items: end !important;
+  }
+  .page-tabla-rapida .tabla-rapida-nav-and-week-row > * {
+    min-width: 0 !important;
+  }
+  .page-tabla-rapida .tabla-rapida-nav-and-week-row > *:nth-child(1) { grid-column: 1 !important; grid-row: 1 !important; overflow: hidden !important; }
+  .page-tabla-rapida .tabla-rapida-nav-and-week-row > *:nth-child(2) { grid-column: 1 !important; grid-row: 2 !important; }
+  .page-tabla-rapida .tabla-rapida-nav-and-week-row > *:nth-child(3) { display: none !important; }
+  .page-tabla-rapida .tabla-rapida-nav-and-week-row > *:nth-child(4) { grid-column: 1 / -1 !important; grid-row: 3 !important; overflow: visible !important; }
+  .page-tabla-rapida .tabla-rapida-nav-and-week-row > *:nth-child(5) { grid-column: 2 !important; grid-row: 1 !important; overflow: hidden !important; }
+  .page-tabla-rapida .tabla-rapida-nav-and-week-row > *:nth-child(6) { grid-column: 2 !important; grid-row: 2 !important; overflow: visible !important; }
+  .page-tabla-rapida .tabla-rapida-week-strip-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Mes y categoría más compactos, alineados en la misma fila */
+  .page-tabla-rapida .tabla-rapida-nav-row {
+    gap: 0.5rem !important;
+    align-items: flex-end;
+  }
+  .page-tabla-rapida .tabla-rapida-nav-month-label {
+    font-size: 0.8rem !important;
+    min-width: 6rem !important;
+  }
+  .page-tabla-rapida .tabla-rapida-nav-row > div:first-child > button,
+  .page-tabla-rapida .tabla-rapida-nav-and-week-row .tabla-rapida-nav-arrow-btn {
+    width: 1.5rem !important;
+    min-width: 1.5rem !important;
+    height: 1.5rem !important;
+    min-height: 1.5rem !important;
+    font-size: 0.75rem !important;
+    box-sizing: border-box !important;
+  }
+  .page-tabla-rapida .tabla-rapida-week-strip-wrap .tabla-rapida-nav-arrow-btn {
+    width: 1.5rem !important;
+    min-width: 1.5rem !important;
+    height: 1.5rem !important;
+    min-height: 1.5rem !important;
+    font-size: 0.75rem !important;
+    box-sizing: border-box !important;
+  }
+  .page-tabla-rapida .tabla-rapida-category-filter {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    min-width: 0 !important;
+  }
+  .page-tabla-rapida .tabla-rapida-category-filter .tabla-rapida-category-select {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    flex: 1 1 auto !important;
+  }
+  .page-tabla-rapida .tabla-rapida-category-label {
+    font-size: 0.7rem !important;
+    margin: 0 !important;
+  }
+  .page-tabla-rapida .tabla-rapida-category-select {
+    font-size: 0.78rem !important;
+    padding: 0.28rem 0.5rem !important;
+    min-width: 5rem !important;
+  }
+  .page-tabla-rapida .tabla-rapida-category-filter [role="listbox"] {
+    max-width: min(20rem, calc(100vw - 1.5rem)) !important;
+  }
   .tabla-rapida-table-wrap {
     padding: 0.5rem;
     margin-left: -0.5rem;
@@ -1879,34 +1955,70 @@ input[type="date"].input-date-picker {
     display: none !important;
   }
   .page-tabla-rapida .tabla-rapida-excel {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
   }
   .page-tabla-rapida .tabla-rapida-excel th,
   .page-tabla-rapida .tabla-rapida-excel td {
-    padding: 0.5rem 0.6rem !important;
+    padding: 0.35rem 0.4rem !important;
     min-width: 0;
   }
-  .page-tabla-rapida .tabla-rapida-excel th:nth-child(1) { min-width: 4.2rem; }   /* Fecha */
-  .page-tabla-rapida .tabla-rapida-excel th:nth-child(2) { min-width: 4rem; }    /* Concepto */
-  .page-tabla-rapida .tabla-rapida-excel th:nth-child(3) { min-width: 3.5rem; }  /* Categoría */
-  .page-tabla-rapida .tabla-rapida-excel th:nth-child(4) { min-width: 3.8rem; }   /* Tipo */
-  .page-tabla-rapida .tabla-rapida-excel th:nth-child(5) { min-width: 4rem; }    /* Importe */
+  .page-tabla-rapida .tabla-rapida-excel th:nth-child(1) { min-width: 3.2rem; font-size: 0.7rem !important; }   /* Fecha */
+  .page-tabla-rapida .tabla-rapida-excel th:nth-child(2) { min-width: 3rem; font-size: 0.7rem !important; }    /* Concepto */
+  .page-tabla-rapida .tabla-rapida-excel th:nth-child(3) { min-width: 3rem; font-size: 0.7rem !important; }  /* Categoría */
+  .page-tabla-rapida .tabla-rapida-excel th:nth-child(4) { min-width: 2.8rem; font-size: 0.7rem !important; }   /* Tipo */
+  .page-tabla-rapida .tabla-rapida-excel th:nth-child(5) { min-width: 3.2rem; font-size: 0.7rem !important; }    /* Importe */
+  .page-tabla-rapida .tabla-rapida-excel td:nth-child(1) { font-size: 0.7rem !important; }
   .page-tabla-rapida .tabla-rapida-excel td:nth-child(2) {
     white-space: normal;
     word-break: break-word;
-    max-width: 7rem;
+    max-width: 6rem;
+    font-size: 0.72rem !important;
   }
   .page-tabla-rapida .tabla-rapida-excel td:nth-child(3) {
     white-space: normal;
     word-break: break-word;
-    max-width: 5rem;
+    max-width: 4rem;
+    font-size: 0.72rem !important;
+  }
+  .page-tabla-rapida .tabla-rapida-excel td:nth-child(5) {
+    font-size: 0.7rem !important;
+    font-weight: 600;
   }
   .page-tabla-rapida .tabla-rapida-excel th:last-child,
-  .page-tabla-rapida .tabla-rapida-excel td:last-child { padding-right: 1rem !important; }
-  .tabla-rapida-totals {
-    padding: 1rem !important;
-    gap: 1.25rem !important;
-    margin-top: 1.25rem !important;
+  .page-tabla-rapida .tabla-rapida-excel td:last-child { padding-right: 0.5rem !important; }
+  /* Totales: en móvil en columna para que no se corten y se lean bien */
+  .page-tabla-rapida .tabla-rapida-totals {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 0.85rem 1rem !important;
+    gap: 0 !important;
+    margin-top: 1rem !important;
+    overflow: visible !important;
+  }
+  .page-tabla-rapida .tabla-rapida-totals-divider {
+    width: 100% !important;
+    height: 1px !important;
+    min-height: 1px !important;
+    margin: 0.5rem 0 !important;
+  }
+  .page-tabla-rapida .tabla-rapida-totals-right {
+    margin-left: 0 !important;
+    padding-top: 0 !important;
+  }
+  .page-tabla-rapida .tabla-rapida-totals-left {
+    gap: 1rem !important;
+  }
+  .page-tabla-rapida .tabla-rapida-total-month-row {
+    flex-wrap: wrap !important;
+    gap: 0.75rem 1rem !important;
+    margin-top: 0.15rem !important;
+  }
+  .page-tabla-rapida .tabla-rapida-totals .tabla-rapida-totals-left > div span:last-child,
+  .page-tabla-rapida .tabla-rapida-totals .tabla-rapida-totals-right .tabla-rapida-total-month-row span {
+    font-size: 0.9rem !important;
+  }
+  .page-tabla-rapida .tabla-rapida-totals .tabla-rapida-totals-right > span {
+    font-size: 0.72rem !important;
   }
 }
 
