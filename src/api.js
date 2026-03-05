@@ -103,6 +103,12 @@ export const api = {
     update: (id, body) => request(`/quick-templates/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     delete: (id) => request(`/quick-templates/${id}`, { method: 'DELETE' }),
   },
+  quickLog: {
+    list: () => request('/quick-log'),
+    create: (body) => request('/quick-log', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id, body) => request(`/quick-log/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: (id) => request(`/quick-log/${id}`, { method: 'DELETE' }),
+  },
   transfers: {
     list: () => request('/transfers'),
     get: (id) => request(`/transfers/${id}`),

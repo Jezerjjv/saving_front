@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { useMessage } from '../context/MessageContext';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
+import { getTodayLocalDateString } from '../utils/dateUtils';
 import TransactionForm from '../components/TransactionForm';
 import Loader from '../components/Loader';
 import { IconEdit, IconTrash, IconApply } from '../components/Icons.jsx';
@@ -146,7 +147,7 @@ export default function RapidosYFijos() {
 
   const applyQuickTemplate = async (tpl) => {
     setApplyingQuickId(tpl.type === 'expense' ? `e-${tpl.id}` : `i-${tpl.id}`);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getTodayLocalDateString();
     try {
       await api.transactions.create({
         name: tpl.name,

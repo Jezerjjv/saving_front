@@ -1807,6 +1807,107 @@ input[type="date"].input-date-picker {
   background: var(--surface-hover);
 }
 
+/* Vista tabla tipo Excel - movimientos */
+.movimientos-table-wrap {
+  -webkit-overflow-scrolling: touch;
+}
+.movimientos-excel-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-shadow: 0 1px 0 var(--border);
+}
+.movimientos-excel-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+.movimientos-excel-table .excel-action-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Tabla rápida: misma experiencia tipo Excel */
+.page-tabla-rapida .tabla-rapida-excel tbody tr:hover {
+  background: var(--surface-hover);
+}
+.page-tabla-rapida .excel-action-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Tabla rápida: móvil menos apiñado */
+@media (max-width: 640px) {
+  .page-tabla-rapida {
+    padding: 0 0.5rem;
+    box-sizing: border-box;
+  }
+  .tabla-rapida-hint {
+    margin-bottom: 1.25rem !important;
+    padding-right: 0.25rem;
+  }
+  .tabla-rapida-quick-bar {
+    gap: 0.65rem !important;
+    padding: 1rem 0.75rem !important;
+    margin-bottom: 1.25rem !important;
+  }
+  .tabla-rapida-quick-bar-label {
+    width: 100%;
+    display: block !important;
+    margin-right: 0 !important;
+    margin-bottom: 0.5rem !important;
+    margin-top: 0.35rem;
+  }
+  .tabla-rapida-quick-bar .tabla-rapida-quick-bar-label + button {
+    margin-left: 0;
+  }
+  .tabla-rapida-add-btn {
+    display: block;
+    width: 100%;
+    margin-bottom: 1.25rem !important;
+    padding: 0.65rem 1rem !important;
+    box-sizing: border-box;
+  }
+  .tabla-rapida-table-wrap {
+    padding: 0.5rem;
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+    width: calc(100% + 1rem);
+    max-width: calc(100vw - 1rem);
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius);
+  }
+  .page-tabla-rapida .tabla-rapida-excel {
+    font-size: 0.85rem;
+  }
+  .page-tabla-rapida .tabla-rapida-excel th,
+  .page-tabla-rapida .tabla-rapida-excel td {
+    padding: 0.5rem 0.6rem !important;
+    min-width: 0;
+  }
+  .page-tabla-rapida .tabla-rapida-excel th:nth-child(1) { min-width: 4.2rem; }   /* Fecha */
+  .page-tabla-rapida .tabla-rapida-excel th:nth-child(2) { min-width: 4rem; }    /* Concepto */
+  .page-tabla-rapida .tabla-rapida-excel th:nth-child(3) { min-width: 3.5rem; }  /* Categoría */
+  .page-tabla-rapida .tabla-rapida-excel th:nth-child(4) { min-width: 3.8rem; }   /* Tipo */
+  .page-tabla-rapida .tabla-rapida-excel th:nth-child(5) { min-width: 4rem; }    /* Importe */
+  .page-tabla-rapida .tabla-rapida-excel td:nth-child(2) {
+    white-space: normal;
+    word-break: break-word;
+    max-width: 7rem;
+  }
+  .page-tabla-rapida .tabla-rapida-excel td:nth-child(3) {
+    white-space: normal;
+    word-break: break-word;
+    max-width: 5rem;
+  }
+  .page-tabla-rapida .tabla-rapida-excel th:last-child,
+  .page-tabla-rapida .tabla-rapida-excel td:last-child { padding-right: 1rem !important; }
+  .tabla-rapida-totals {
+    padding: 1rem !important;
+    gap: 1.25rem !important;
+    margin-top: 1.25rem !important;
+  }
+}
+
 /* Botones expandir/comprimir todo en resumen */
 .page-transactions .summary-expand-btn:hover {
   background: var(--border);

@@ -12,6 +12,7 @@ import TransactionForm from '../components/TransactionForm';
 import CaptureExpenseModal from '../components/CaptureExpenseModal';
 import Loader from '../components/Loader';
 import MonthlyBarChart from '../components/MonthlyBarChart';
+import { getTodayLocalDateString } from '../utils/dateUtils';
 import { IconEdit, IconTrash, IconApply, IconChevronDown, IconChevronUp, IconChevronRight, IconCamera } from '../components/Icons.jsx'; 
 
 const now = new Date();
@@ -72,6 +73,9 @@ export default function Transactions() {
   const [initialDataFromCapture, setInitialDataFromCapture] = useState(null);
   const [chartYear, setChartYear] = useState(yearParam ? Number(yearParam) : currentYear);
   const [monthlyChartData, setMonthlyChartData] = useState([]);
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'table'
+  const [tableSortBy, setTableSortBy] = useState('date');
+  const [tableSortDir, setTableSortDir] = useState('desc');
   const { selectedAccountId, setSelectedAccountId } = useSelectedAccount();
 
   const setMonth = (m) => {
@@ -342,7 +346,7 @@ export default function Transactions() {
 
   const applyQuickTemplate = async (tpl) => {
     setApplyingQuickId(tpl.type === 'expense' ? `e-${tpl.id}` : `i-${tpl.id}`);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getTodayLocalDateString();
     const accountId = (selectedAccountId != null && selectedAccountId !== ACCOUNT_ID_ALL)
       ? selectedAccountId
       : (primaryAccountId != null ? primaryAccountId : tpl.accountId);
@@ -486,6 +490,53 @@ export default function Transactions() {
     }
 
     return result;
+  };
+
+  /** Lista plana de movimientos para la vista tabla (tipo Excel) */
+  const flatRows = useMemo(() => {
+    const fg = filteredGrouped();
+    const rows = [];
+    fg.forEach((dayGroup) => {
+      (dayGroup.categories || []).forEach((cat) => {
+        (cat.items || []).forEach((tx) => {
+          const acc = accounts.find((a) => a.id === tx.accountId);
+          rows.push({
+            id: tx.id,
+            date: dayGroup.date,
+            name: tx.name,
+            categoryId: cat.categoryId ?? null,
+            categoryName: cat.categoryName ?? 'Sin categoría',
+            categoryIcon: cat.categoryIcon ?? '',
+            type: tx.type,
+            amount: tx.amount ?? 0,
+            accountId: tx.accountId,
+            accountName: acc?.name ?? '',
+            incomeType: tx.incomeType,
+            expenseType: tx.expenseType,
+          });
+        });
+      });
+    });
+    return rows;
+  }, [grouped, effectiveAccountId, activeTab, searchDay, searchText, searchCategoryId, accounts]);
+
+  const sortedFlatRows = useMemo(() => {
+    const dir = tableSortDir === 'asc' ? 1 : -1;
+    return [...flatRows].sort((a, b) => {
+      let cmp = 0;
+      if (tableSortBy === 'date') cmp = (a.date || '').localeCompare(b.date || '');
+      else if (tableSortBy === 'name') cmp = (a.name || '').localeCompare(b.name || '');
+      else if (tableSortBy === 'category') cmp = (a.categoryName || '').localeCompare(b.categoryName || '');
+      else if (tableSortBy === 'type') cmp = (a.type || '').localeCompare(b.type || '');
+      else if (tableSortBy === 'amount') cmp = (a.amount ?? 0) - (b.amount ?? 0);
+      else if (tableSortBy === 'account') cmp = (a.accountName || '').localeCompare(b.accountName || '');
+      return cmp * dir;
+    });
+  }, [flatRows, tableSortBy, tableSortDir]);
+
+  const handleTableSort = (col) => {
+    setTableSortBy(col);
+    setTableSortDir((prev) => (tableSortBy === col ? (prev === 'asc' ? 'desc' : 'asc') : 'desc'));
   };
 
   /** Movimientos por categoría para el resumen (acordeón): mismo filtro de cuenta que el listado */
@@ -824,6 +875,30 @@ export default function Transactions() {
         </div>
       )}
 
+      {(activeTab === 'all' || activeTab === 'expense' || activeTab === 'income') && (
+        <div style={styles.viewToggle}>
+          <button
+            type="button"
+            style={{ ...styles.viewToggleBtn, ...(viewMode === 'list' ? styles.viewToggleBtnActive : {}) }}
+            className="touch-target"
+            onClick={() => setViewMode('list')}
+            aria-pressed={viewMode === 'list'}
+          >
+            Lista
+          </button>
+          <button
+            type="button"
+            style={{ ...styles.viewToggleBtn, ...(viewMode === 'table' ? styles.viewToggleBtnActive : {}) }}
+            className="touch-target"
+            onClick={() => setViewMode('table')}
+            aria-pressed={viewMode === 'table'}
+            title="Vista tipo hoja de cálculo"
+          >
+            Tabla
+          </button>
+        </div>
+      )}
+
       {showCaptureModal && (
         <CaptureExpenseModal
           categories={categories}
@@ -852,54 +927,115 @@ export default function Transactions() {
       ) : (
         <>
           {(activeTab === 'all' || activeTab === 'expense' || activeTab === 'income') && (
-            <div style={styles.accordions}>
-              {isComputedTotal ? (
-                groupedByAccount.length === 0 ? (
+            viewMode === 'list' ? (
+              <div style={styles.accordions}>
+                {isComputedTotal ? (
+                  groupedByAccount.length === 0 ? (
+                    <p style={styles.empty}>
+                      No hay {activeTab === 'all' ? 'movimientos' : activeTab === 'expense' ? 'gastos' : 'ingresos'}
+                      {' en '}{MONTHS[month - 1]} {year}.
+                    </p>
+                  ) : (
+                    groupedByAccount.map(({ accountId, accountName, dayGroups }) => (
+                      <div key={accountId} style={styles.accountSection}>
+                        <h3 style={styles.accountSectionTitle}>
+                          {primaryAccountId === accountId ? '⭐ ' : ''}{accountName}
+                        </h3>
+                        {dayGroups.length === 0 ? (
+                          <p style={styles.empty}>Sin movimientos este mes.</p>
+                        ) : (
+                          dayGroups.map((dayGroup) => (
+                            <TransactionAccordion
+                              key={`${accountId}-${dayGroup.date}`}
+                              dayGroup={dayGroup}
+                              filterType={activeTab === 'all' ? null : activeTab}
+                              onEdit={openEditTx}
+                              onDelete={deleteTx}
+                              highlightedTxId={highlightedTxId}
+                            />
+                          ))
+                        )}
+                      </div>
+                    ))
+                  )
+                ) : filteredGrouped().length === 0 ? (
                   <p style={styles.empty}>
                     No hay {activeTab === 'all' ? 'movimientos' : activeTab === 'expense' ? 'gastos' : 'ingresos'}
                     {' en '}{MONTHS[month - 1]} {year}.
                   </p>
                 ) : (
-                  groupedByAccount.map(({ accountId, accountName, dayGroups }) => (
-                    <div key={accountId} style={styles.accountSection}>
-                      <h3 style={styles.accountSectionTitle}>
-                        {primaryAccountId === accountId ? '⭐ ' : ''}{accountName}
-                      </h3>
-                      {dayGroups.length === 0 ? (
-                        <p style={styles.empty}>Sin movimientos este mes.</p>
-                      ) : (
-                        dayGroups.map((dayGroup) => (
-                          <TransactionAccordion
-                            key={`${accountId}-${dayGroup.date}`}
-                            dayGroup={dayGroup}
-                            filterType={activeTab === 'all' ? null : activeTab}
-                            onEdit={openEditTx}
-                            onDelete={deleteTx}
-                            highlightedTxId={highlightedTxId}
-                          />
-                        ))
-                      )}
-                    </div>
+                  filteredGrouped().map((dayGroup) => (
+                    <TransactionAccordion
+                      key={dayGroup.date}
+                      dayGroup={dayGroup}
+                      filterType={activeTab === 'all' ? null : activeTab}
+                      onEdit={openEditTx}
+                      onDelete={deleteTx}
+                      highlightedTxId={highlightedTxId}
+                    />
                   ))
-                )
-              ) : filteredGrouped().length === 0 ? (
-                <p style={styles.empty}>
-                  No hay {activeTab === 'all' ? 'movimientos' : activeTab === 'expense' ? 'gastos' : 'ingresos'}
-                  {' en '}{MONTHS[month - 1]} {year}.
-                </p>
-              ) : (
-                filteredGrouped().map((dayGroup) => (
-                  <TransactionAccordion
-                    key={dayGroup.date}
-                    dayGroup={dayGroup}
-                    filterType={activeTab === 'all' ? null : activeTab}
-                    onEdit={openEditTx}
-                    onDelete={deleteTx}
-                    highlightedTxId={highlightedTxId}
-                  />
-                ))
-              )}
-            </div>
+                )}
+              </div>
+            ) : (
+              <div className="movimientos-table-wrap" style={styles.tableWrap}>
+                {sortedFlatRows.length === 0 ? (
+                  <p style={styles.empty}>
+                    No hay {activeTab === 'all' ? 'movimientos' : activeTab === 'expense' ? 'gastos' : 'ingresos'}
+                    {' en '}{MONTHS[month - 1]} {year}.
+                  </p>
+                ) : (
+                  <table className="movimientos-excel-table" style={styles.excelTable}>
+                    <thead>
+                      <tr>
+                        <th style={styles.excelTh} onClick={() => handleTableSort('date')} title="Ordenar por fecha">
+                          Fecha {tableSortBy === 'date' && (tableSortDir === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th style={styles.excelTh} onClick={() => handleTableSort('name')} title="Ordenar por concepto">
+                          Concepto {tableSortBy === 'name' && (tableSortDir === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th style={styles.excelTh} onClick={() => handleTableSort('category')} title="Ordenar por categoría">
+                          Categoría {tableSortBy === 'category' && (tableSortDir === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th style={styles.excelTh} onClick={() => handleTableSort('type')} title="Ordenar por tipo">
+                          Tipo {tableSortBy === 'type' && (tableSortDir === 'asc' ? '↑' : '↓')}
+                        </th>
+                        <th style={styles.excelTh} onClick={() => handleTableSort('amount')} title="Ordenar por importe">
+                          Importe {tableSortBy === 'amount' && (tableSortDir === 'asc' ? '↑' : '↓')}
+                        </th>
+                        {isComputedTotal && (
+                          <th style={styles.excelTh} onClick={() => handleTableSort('account')} title="Ordenar por cuenta">
+                            Cuenta {tableSortBy === 'account' && (tableSortDir === 'asc' ? '↑' : '↓')}
+                          </th>
+                        )}
+                        <th style={{ ...styles.excelTh, ...styles.excelThActions }}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedFlatRows.map((row, idx) => (
+                        <tr key={row.id} id={`tx-${row.id}`} style={{ ...styles.excelTr, ...(idx % 2 === 1 ? styles.excelTrAlternate : {}) }}>
+                          <td style={styles.excelTd}>{row.date ? new Date(row.date + 'T12:00:00').toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}</td>
+                          <td style={styles.excelTd}>{row.name}</td>
+                          <td style={styles.excelTd}><span style={styles.excelCat}>{row.categoryIcon} {row.categoryName}</span></td>
+                          <td style={styles.excelTd}>
+                            <span style={{ ...styles.excelTypeBadge, color: row.type === 'income' ? 'var(--income)' : 'var(--expense)' }}>
+                              {row.type === 'income' ? 'Ingreso' : 'Gasto'}
+                            </span>
+                          </td>
+                          <td style={{ ...styles.excelTd, ...styles.excelTdAmount, color: row.type === 'income' ? 'var(--income)' : 'var(--expense)' }}>
+                            {row.type === 'income' ? '+' : '-'}{fmt(row.amount)}
+                          </td>
+                          {isComputedTotal && <td style={styles.excelTd}>{row.accountName}</td>}
+                          <td style={styles.excelTdActions}>
+                            <button type="button" className="excel-action-btn" onClick={() => openEditTx({ id: row.id, date: row.date, name: row.name, amount: row.amount, type: row.type, accountId: row.accountId, categoryId: row.categoryId, incomeType: row.incomeType, expenseType: row.expenseType })} style={styles.excelActionBtn} title="Editar" aria-label="Editar"><IconEdit size={14} /></button>
+                            <button type="button" className="excel-action-btn" onClick={() => deleteTx(row.id)} style={styles.excelActionBtn} title="Eliminar" aria-label="Eliminar"><IconTrash size={14} /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )
           )}
 
           {activeTab === 'all' && (() => {
@@ -1466,6 +1602,21 @@ const styles = {
   searchSelect: { flex: '1 1 10rem', minWidth: 0, padding: '0.5rem 1rem', minHeight: 'var(--touch-min)', boxSizing: 'border-box', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '0.9rem' },
   searchDay: { width: '5rem', minWidth: '5rem', flexShrink: 0, padding: '0.5rem 0.75rem', minHeight: 'var(--touch-min)', boxSizing: 'border-box', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '0.9rem', textAlign: 'center' },
   searchClear: { padding: '0.5rem 1rem', minHeight: 'var(--touch-min)', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', fontSize: '0.9rem' },
+  viewToggle: { display: 'flex', gap: '0.25rem', marginBottom: '1rem', width: '100%' },
+  viewToggleBtn: { padding: '0.45rem 1rem', fontSize: '0.9rem', fontWeight: 500, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', cursor: 'pointer', transition: 'background 0.15s, color 0.15s, border-color 0.15s' },
+  viewToggleBtnActive: { background: 'var(--surface-hover)', color: 'var(--accent)', borderColor: 'var(--accent)' },
+  tableWrap: { width: '100%', overflowX: 'auto', marginTop: '0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)' },
+  excelTable: { width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' },
+  excelTh: { padding: '0.35rem 0.5rem', textAlign: 'left', fontWeight: 600, background: 'var(--surface-hover)', borderBottom: '2px solid var(--border)', borderRight: '1px solid var(--border)', whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none', fontSize: '0.8rem' },
+  excelThActions: { cursor: 'default', borderRight: 'none' },
+  excelTr: { borderBottom: '1px solid var(--border)' },
+  excelTrAlternate: { background: 'var(--surface)' },
+  excelTd: { padding: '0.28rem 0.5rem', borderRight: '1px solid var(--border)', verticalAlign: 'middle', lineHeight: 1.3 },
+  excelTdAmount: { fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' },
+  excelTdActions: { padding: '0.2rem 0.35rem', borderRight: 'none', whiteSpace: 'nowrap' },
+  excelCat: { display: 'inline-flex', alignItems: 'center', gap: '0.2rem' },
+  excelTypeBadge: { fontWeight: 600, fontSize: '0.75rem' },
+  excelActionBtn: { padding: '0.22rem', margin: '0 0.1rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.15s, border-color 0.15s' },
   accordions: { marginTop: '0.5rem', width: '100%' },
   accountSection: { marginBottom: '1.5rem', width: '100%' },
   accountSectionTitle: { fontSize: '1rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.75rem', marginTop: 0 },

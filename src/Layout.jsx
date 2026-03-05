@@ -9,6 +9,7 @@ import {
   IconCalendar,
   IconCreditCard,
   IconFileText,
+  IconChart,
   IconArrowLeftRight,
   IconSettings,
   IconLogo,
@@ -42,6 +43,7 @@ const misAppsChildren = [
 const navBase = [
   { to: '/', label: 'Inicio', Icon: IconHome },
   { to: '/movimientos', label: 'Movimientos', Icon: IconFileText },
+  { to: '/tabla-rapida', label: 'Tabla rápida', Icon: IconChart },
   { to: '/calendario', label: 'Calendario', Icon: IconCalendar },
   { to: '/cuentas', label: 'Cuentas', Icon: IconCreditCard },
   { to: '/transferencias', label: 'Transferencias', Icon: IconArrowLeftRight },

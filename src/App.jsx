@@ -6,6 +6,7 @@ import Calendar from './pages/Calendar';
 import Accounts from './pages/Accounts';
 import Transactions from './pages/Transactions';
 import RapidosYFijos from './pages/RapidosYFijos';
+import TablaRapida from './pages/TablaRapida';
 import Transfers from './pages/Transfers';
 import Cryptos from './pages/Cryptos';
 import Acciones from './pages/Acciones';
@@ -49,6 +50,7 @@ function AppRoutes() {
               <Route path="cuentas" element={<Accounts />} />
               <Route path="movimientos" element={<Transactions />} />
               <Route path="rapidos-y-fijos" element={<RapidosYFijos />} />
+              <Route path="tabla-rapida" element={<TablaRapida />} />
               <Route path="transferencias" element={<Transfers />} />
               <Route path="criptomonedas" element={<Cryptos />} />
               <Route path="acciones" element={<Acciones />} />
