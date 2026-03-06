@@ -1902,19 +1902,19 @@ input[type="date"].input-date-picker {
   }
   .page-tabla-rapida .tabla-rapida-nav-row > div:first-child > button,
   .page-tabla-rapida .tabla-rapida-nav-and-week-row .tabla-rapida-nav-arrow-btn {
-    width: 1.5rem !important;
-    min-width: 1.5rem !important;
-    height: 1.5rem !important;
-    min-height: 1.5rem !important;
-    font-size: 0.75rem !important;
+    width: 2rem !important;
+    min-width: 2rem !important;
+    height: 2rem !important;
+    min-height: 2rem !important;
+    font-size: 0.9rem !important;
     box-sizing: border-box !important;
   }
   .page-tabla-rapida .tabla-rapida-week-strip-wrap .tabla-rapida-nav-arrow-btn {
-    width: 1.5rem !important;
-    min-width: 1.5rem !important;
-    height: 1.5rem !important;
-    min-height: 1.5rem !important;
-    font-size: 0.75rem !important;
+    width: 2rem !important;
+    min-width: 2rem !important;
+    height: 2rem !important;
+    min-height: 2rem !important;
+    font-size: 0.9rem !important;
     box-sizing: border-box !important;
   }
   .page-tabla-rapida .tabla-rapida-category-filter {
