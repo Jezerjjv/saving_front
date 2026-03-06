@@ -44,7 +44,7 @@ function AppRoutes() {
             <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
             <Route path="/registro" element={<GuestRoute><Register /></GuestRoute>} />
             <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              <Route index element={<Dashboard />} />
+              <Route index element={<TablaRapida />} />
               <Route path="inicio" element={<Dashboard />} />
               <Route path="calendario" element={<Calendar />} />
               <Route path="cuentas" element={<Accounts />} />
