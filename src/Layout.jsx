@@ -44,6 +44,7 @@ const navBase = [
   { to: '/', label: 'Inicio', Icon: IconHome },
   { to: '/movimientos', label: 'Movimientos', Icon: IconFileText },
   { to: '/tabla-rapida', label: 'Tabla rápida', Icon: IconChart },
+  { to: '/cuentas-rapida', label: 'Cuentas rápida', Icon: IconCreditCard },
   { to: '/calendario', label: 'Calendario', Icon: IconCalendar },
   { to: '/cuentas', label: 'Cuentas', Icon: IconCreditCard },
   { to: '/transferencias', label: 'Transferencias', Icon: IconArrowLeftRight },
@@ -63,6 +64,7 @@ const DEFS_LABEL = 'Rápidos y Fijos';
 function isActive(path, location, item) {
   if (path === '/') return location.pathname === '/' || location.pathname === '/inicio';
   if (path === '/movimientos') return location.pathname === '/movimientos' || location.pathname === '/rapidos-y-fijos';
+  if (path === '/cuentas') return location.pathname === '/cuentas';
   if (item?.type === 'group' && item.children) {
     const matchChild = (c) => {
       if (c.to === location.pathname) return true;

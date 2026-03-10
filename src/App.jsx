@@ -7,6 +7,7 @@ import Accounts from './pages/Accounts';
 import Transactions from './pages/Transactions';
 import RapidosYFijos from './pages/RapidosYFijos';
 import TablaRapida from './pages/TablaRapida';
+import CuentasRapida from './pages/CuentasRapida';
 import Transfers from './pages/Transfers';
 import Cryptos from './pages/Cryptos';
 import Acciones from './pages/Acciones';
@@ -51,6 +52,7 @@ function AppRoutes() {
               <Route path="movimientos" element={<Transactions />} />
               <Route path="rapidos-y-fijos" element={<RapidosYFijos />} />
               <Route path="tabla-rapida" element={<TablaRapida />} />
+              <Route path="cuentas-rapida" element={<CuentasRapida />} />
               <Route path="transferencias" element={<Transfers />} />
               <Route path="criptomonedas" element={<Cryptos />} />
               <Route path="acciones" element={<Acciones />} />
