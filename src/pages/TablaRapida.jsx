@@ -5,7 +5,7 @@ import { useMessage } from '../context/MessageContext';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
 import { useAppSettings } from '../context/AppSettingsContext';
 import { getTodayLocalDateString } from '../utils/dateUtils';
-import { IconEdit, IconTrash, IconChevronDown, IconChevronUp } from '../components/Icons.jsx';
+import { IconEdit, IconTrash, IconChevronDown, IconChevronUp, IconChevronRight } from '../components/Icons.jsx';
 import Loader from '../components/Loader.jsx';
 
 const MONTHS = [
@@ -51,9 +51,9 @@ export default function TablaRapida() {
   const monthParam = searchParams.get('month');
   const yearParam = searchParams.get('year');
   const dayParam = searchParams.get('day');
-  const [month, setMonthState] = useState(monthParam ? Number(monthParam) : currentMonth);
-  const [year, setYearState] = useState(yearParam ? Number(yearParam) : currentYear);
-  const [selectedDay, setSelectedDay] = useState(dayParam !== null && dayParam !== '' ? dayParam : '');
+  const month = monthParam ? Math.min(12, Math.max(1, Number(monthParam))) : currentMonth;
+  const year = yearParam ? Number(yearParam) : currentYear;
+  const selectedDay = (dayParam !== null && dayParam !== '') ? dayParam : '';
   const [entries, setEntries] = useState([]);
   const [categories, setCategories] = useState([]);
   const [quickTemplatesExpense, setQuickTemplatesExpense] = useState([]);
@@ -72,7 +72,7 @@ export default function TablaRapida() {
   const [filterCategoryId, setFilterCategoryId] = useState(''); // '' = todas
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
-  const [showSummaryByCategory, setShowSummaryByCategory] = useState(false);
+  const [summaryAccordionOpen, setSummaryAccordionOpen] = useState(false);
   const [expandedSummaryCategory, setExpandedSummaryCategory] = useState(null);
   const [expandedRowId, setExpandedRowId] = useState(null);
   const [highlightedEntryId, setHighlightedEntryId] = useState(null);
@@ -115,23 +115,8 @@ export default function TablaRapida() {
 
   useLayoutHeader('Tabla rápida');
 
-  useEffect(() => {
-    if (monthParam && yearParam) {
-      const m = Number(monthParam);
-      const y = Number(yearParam);
-      setMonthState(m);
-      setYearState(y);
-    }
-  }, [monthParam, yearParam]);
-
-  useEffect(() => {
-    if (dayParam !== null && dayParam !== '') setSelectedDay(dayParam);
-    else setSelectedDay('');
-  }, [dayParam]);
-
   const setMonth = (m) => {
     const val = Math.min(12, Math.max(1, m));
-    setMonthState(val);
     setSearchParams((p) => {
       const next = new URLSearchParams(p);
       next.set('month', String(val));
@@ -139,37 +124,37 @@ export default function TablaRapida() {
       next.delete('day');
       return next;
     });
-    setSelectedDay('');
-  };
-
-  const setYear = (y) => {
-    setYearState(y);
-    setSearchParams((p) => {
-      const next = new URLSearchParams(p);
-      next.set('month', String(month));
-      next.set('year', String(y));
-      next.delete('day');
-      return next;
-    });
-    setSelectedDay('');
   };
 
   const prevMonth = () => {
     if (month === 1) {
-      setMonth(12);
-      setYear(year - 1);
-    } else setMonth(month - 1);
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p);
+        next.set('month', '12');
+        next.set('year', String(year - 1));
+        next.delete('day');
+        return next;
+      });
+    } else {
+      setMonth(month - 1);
+    }
   };
 
   const nextMonth = () => {
     if (month === 12) {
-      setMonth(1);
-      setYear(year + 1);
-    } else setMonth(month + 1);
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p);
+        next.set('month', '1');
+        next.set('year', String(year + 1));
+        next.delete('day');
+        return next;
+      });
+    } else {
+      setMonth(month + 1);
+    }
   };
 
   const selectDay = (day) => {
-    setSelectedDay(day);
     setSearchParams((p) => {
       const next = new URLSearchParams(p);
       next.set('month', String(month));
@@ -181,15 +166,11 @@ export default function TablaRapida() {
   };
 
   const goToToday = () => {
-    const todayNum = now.getDate();
-    setMonthState(currentMonth);
-    setYearState(currentYear);
-    setSelectedDay(String(todayNum));
     setSearchParams((p) => {
       const next = new URLSearchParams(p);
       next.set('month', String(currentMonth));
       next.set('year', String(currentYear));
-      next.set('day', String(todayNum));
+      next.set('day', String(now.getDate()));
       return next;
     });
   };
@@ -289,22 +270,30 @@ export default function TablaRapida() {
   }, [month, year]);
 
   useEffect(() => {
-    const todayNum = now.getDate();
+    if (monthParam != null && monthParam !== '' && yearParam != null && yearParam !== '') return;
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p);
+      next.set('month', String(currentMonth));
+      next.set('year', String(currentYear));
+      if (dayParam == null || dayParam === '') next.set('day', String(now.getDate()));
+      return next;
+    });
+  }, [monthParam, yearParam]);
+
+  useEffect(() => {
     const noDayInUrl = dayParam === null || dayParam === '';
-    if (noDayInUrl && !hasSetDefaultDayForMonth.current) {
-      setMonthState(currentMonth);
-      setYearState(currentYear);
-      setSelectedDay(String(todayNum));
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p);
-        next.set('month', String(currentMonth));
-        next.set('year', String(currentYear));
-        next.set('day', String(todayNum));
-        return next;
-      });
-      hasSetDefaultDayForMonth.current = true;
-    }
-  }, [dayParam]);
+    if (!noDayInUrl) return;
+    if (month !== currentMonth || year !== currentYear) return;
+    if (hasSetDefaultDayForMonth.current) return;
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p);
+      next.set('month', String(month));
+      next.set('year', String(year));
+      next.set('day', String(now.getDate()));
+      return next;
+    });
+    hasSetDefaultDayForMonth.current = true;
+  }, [dayParam, month, year]);
 
   const displayedEntries = useMemo(() => {
     let list = entriesInMonth;
@@ -652,7 +641,6 @@ export default function TablaRapida() {
     totalValue: { fontWeight: 700, fontSize: '1rem' },
     empty: { color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0, padding: '1.5rem' },
     navMonthRow: { display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', marginBottom: 0 },
-    navMonthBlock: { display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' },
     navMonth: { display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' },
     navMonthBtn: { width: '2rem', height: '2rem', minWidth: '2rem', minHeight: '2rem', boxSizing: 'border-box', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', fontSize: '0.9rem', cursor: 'pointer', padding: 0 },
     navMonthLabel: { fontSize: '1rem', fontWeight: 600, color: 'var(--text)', minWidth: '8rem', textAlign: 'left' },
@@ -666,14 +654,14 @@ export default function TablaRapida() {
     categoryDropdownOption: { display: 'block', width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.85rem', textAlign: 'left', border: 'none', borderRadius: 'var(--radius)', background: 'transparent', color: 'var(--text)', cursor: 'pointer' },
     categoryDropdownOptionHover: { background: 'var(--surface-hover)' },
     filterCombo: { display: 'inline-flex', flexWrap: 'wrap', gap: 0, marginBottom: 0 },
-    filterComboBtn: { padding: '0.4rem 0.85rem', fontSize: '0.82rem', fontWeight: 500, border: '1px solid var(--border)', borderBottom: 'none', borderRadius: 'var(--radius) var(--radius) 0 0', marginBottom: '-1px', background: 'var(--surface-hover)', color: 'var(--text-muted)', cursor: 'pointer', transition: 'background 0.15s, color 0.15s, border-color 0.15s', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' },
+    filterComboBtn: { padding: '0.4rem 0.85rem', fontSize: '0.82rem', fontWeight: 500, borderTop: '1px solid var(--border)', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)', borderBottom: 'none', borderRadius: 'var(--radius) var(--radius) 0 0', marginBottom: '-1px', background: 'var(--surface-hover)', color: 'var(--text-muted)', cursor: 'pointer', transition: 'background 0.15s, color 0.15s, border-color 0.15s', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' },
     filterComboGastos: {},
     filterComboIngresos: {},
     filterComboTodo: {},
     filterComboActive: { opacity: 1 },
-    filterComboActiveGastos: { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)', borderBottom: '1px solid var(--surface)', zIndex: 1, boxShadow: '0 1px 0 0 var(--surface)' },
-    filterComboActiveIngresos: { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)', borderBottom: '1px solid var(--surface)', zIndex: 1, boxShadow: '0 1px 0 0 var(--surface)' },
-    filterComboActiveTodo: { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)', borderBottom: '1px solid var(--surface)', zIndex: 1, boxShadow: '0 1px 0 0 var(--surface)' },
+    filterComboActiveGastos: { background: 'var(--accent)', color: '#fff', borderTop: '1px solid var(--accent)', borderLeft: '1px solid var(--accent)', borderRight: '1px solid var(--accent)', borderBottom: '1px solid var(--surface)', zIndex: 1, boxShadow: '0 1px 0 0 var(--surface)' },
+    filterComboActiveIngresos: { background: 'var(--accent)', color: '#fff', borderTop: '1px solid var(--accent)', borderLeft: '1px solid var(--accent)', borderRight: '1px solid var(--accent)', borderBottom: '1px solid var(--surface)', zIndex: 1, boxShadow: '0 1px 0 0 var(--surface)' },
+    filterComboActiveTodo: { background: 'var(--accent)', color: '#fff', borderTop: '1px solid var(--accent)', borderLeft: '1px solid var(--accent)', borderRight: '1px solid var(--accent)', borderBottom: '1px solid var(--surface)', zIndex: 1, boxShadow: '0 1px 0 0 var(--surface)' },
     filterClearBtn: { padding: '0.3rem 0.55rem', fontSize: '0.88rem', fontWeight: 600, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', boxSizing: 'border-box', height: '100%', minHeight: '2rem' },
     filterClearIconBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', boxSizing: 'border-box', width: '2rem', height: '2rem', flexShrink: 0 },
     dayTabsWrap: { display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.5rem' },
@@ -719,7 +707,9 @@ export default function TablaRapida() {
     summaryAccordionList: { listStyle: 'none', margin: 0, padding: '0.25rem 0', fontSize: '0.8rem' },
     summaryAccordionItem: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.35rem 0.5rem', borderRadius: 'var(--radius)', cursor: 'pointer', border: 'none', width: '100%', textAlign: 'left', background: 'transparent', color: 'var(--text)', font: 'inherit' },
     summaryAccordionItemHover: { background: 'var(--surface-hover)' },
-    summaryByCategoryCheckWrap: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', cursor: 'pointer', userSelect: 'none' },
+    summaryAccordionWrap: { marginTop: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', overflow: 'hidden' },
+    summaryAccordionHeader: { width: '100%', padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', background: 'transparent', border: 'none', borderRadius: 0, cursor: 'pointer', color: 'var(--text)', fontSize: '0.95rem', fontWeight: 600, textAlign: 'left', boxSizing: 'border-box' },
+    summaryAccordionPanel: { marginTop: 0, padding: '0.75rem 1rem', border: 'none', borderRadius: 0, boxSizing: 'border-box' },
   };
 
   const hasQuickTemplates = quickTemplatesExpense.length > 0 || quickTemplatesIncome.length > 0;
@@ -1103,7 +1093,7 @@ export default function TablaRapida() {
                       </div>
                     )}
                   </div>
-                  <button type="button" onClick={() => { setFilterType('all'); setFilterCategoryId(''); goToToday(); }} style={styles.filterClearIconBtn} className="touch-target" title="Quitar filtros y volver al día actual" aria-label="Limpiar filtros y volver al día actual">
+                  <button type="button" onClick={() => { setFilterType('all'); setFilterCategoryId(''); goToToday(); }} style={styles.filterClearIconBtn} className="touch-target tabla-rapida-clear-btn" title="Quitar filtros y volver al día actual" aria-label="Limpiar filtros y volver al día actual">
                     <IconTrash size={16} />
                   </button>
                 </div>
@@ -1315,18 +1305,23 @@ export default function TablaRapida() {
             </div>
           </div>
           {!loading && summaryByCategory.length > 0 && (
-            <>
-              <label style={styles.summaryByCategoryCheckWrap} className="touch-target">
-                <input
-                  type="checkbox"
-                  checked={showSummaryByCategory}
-                  onChange={(e) => setShowSummaryByCategory(e.target.checked)}
-                  aria-label="Ver resumen por categoría"
-                />
-                <span>Ver resumen por categoría</span>
-              </label>
-              {showSummaryByCategory && (
-                <div className="tabla-rapida-summary-by-category" style={styles.summaryByCategoryWrap} aria-label="Resumen del mes por categoría">
+            <div className="tabla-rapida-summary-accordion" style={styles.summaryAccordionWrap}>
+              <button
+                type="button"
+                style={styles.summaryAccordionHeader}
+                className="touch-target"
+                onClick={() => setSummaryAccordionOpen((v) => !v)}
+                aria-expanded={summaryAccordionOpen}
+                aria-controls="tabla-rapida-summary-panel"
+                id="tabla-rapida-summary-accordion-btn"
+              >
+                <span>Resumen por categoría</span>
+                <span aria-hidden="true" style={{ display: 'inline-flex', color: 'var(--text-muted)' }}>
+                  {summaryAccordionOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+                </span>
+              </button>
+              {summaryAccordionOpen && (
+                <div id="tabla-rapida-summary-panel" className="tabla-rapida-summary-by-category" style={{ ...styles.summaryByCategoryWrap, ...styles.summaryAccordionPanel }} role="region" aria-labelledby="tabla-rapida-summary-accordion-btn" aria-label="Resumen del mes por categoría">
                   <h3 style={styles.summaryByCategoryTitle}>Resumen por categoría ({MONTHS[month - 1]} {year})</h3>
                   <table style={styles.summaryByCategoryTable}>
                     <thead>
@@ -1352,7 +1347,9 @@ export default function TablaRapida() {
                               title={isExpanded ? 'Cerrar detalle' : 'Ver gastos e ingresos de esta categoría'}
                             >
                               <td style={styles.summaryByCategoryTd}>
-                                <span style={{ marginRight: '0.35rem' }}>{isExpanded ? '▼' : '▶'}</span>
+                                <span style={{ marginRight: '0.35rem', display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)' }}>
+                                  {isExpanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+                                </span>
                                 {row.categoryName}
                               </td>
                               <td style={{ ...styles.summaryByCategoryTd, ...styles.summaryByCategoryTdRight, color: 'var(--expense)' }}>{row.expense > 0 ? `-${fmt(row.expense)}` : '—'}</td>
@@ -1402,7 +1399,7 @@ export default function TablaRapida() {
                   </table>
                 </div>
               )}
-            </>
+            </div>
           )}
         </>
       )}

@@ -1916,28 +1916,48 @@ input[type="date"].input-date-picker {
     padding: 0.65rem 1rem !important;
     box-sizing: border-box;
   }
-  /* Móvil: mes y categoría en la misma fila; debajo la franja de días */
+  /* Móvil: mes y categoría en la misma fila; debajo la franja de días (order para forzar el orden visual) */
   .page-tabla-rapida .tabla-rapida-nav-and-week-row {
     flex-direction: row !important;
     flex-wrap: wrap !important;
-    gap: 0.5rem 0.75rem !important;
+    gap: 0.4rem 0.5rem !important;
     align-items: center !important;
     justify-content: center !important;
     text-align: center;
   }
   .page-tabla-rapida .tabla-rapida-nav-month-block {
+    order: 1 !important;
     flex: 0 1 auto !important;
     align-items: center !important;
   }
   .page-tabla-rapida .tabla-rapida-nav-category-block {
+    order: 2 !important;
     flex: 1 1 auto !important;
     min-width: 0 !important;
     align-items: center !important;
+    display: flex !important;
   }
   .page-tabla-rapida .tabla-rapida-nav-category-block .tabla-rapida-category-filter {
     justify-content: center !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  /* Botón limpiar más corto en móvil para que entre todo */
+  .page-tabla-rapida .tabla-rapida-clear-btn {
+    width: 1.65rem !important;
+    min-width: 1.65rem !important;
+    height: 1.65rem !important;
+    min-height: 1.65rem !important;
+    padding: 0.2rem !important;
+  }
+  .page-tabla-rapida .tabla-rapida-clear-btn svg {
+    width: 14px !important;
+    height: 14px !important;
   }
   .page-tabla-rapida .tabla-rapida-week-strip-wrap {
+    order: 3 !important;
     flex-basis: 100% !important;
     width: 100% !important;
     min-width: 0 !important;
@@ -1952,7 +1972,12 @@ input[type="date"].input-date-picker {
   }
   .page-tabla-rapida .tabla-rapida-nav-month-label {
     font-size: 0.8rem !important;
-    min-width: 6rem !important;
+    min-width: 5rem !important;
+  }
+  .page-tabla-rapida .tabla-rapida-nav-category-block .tabla-rapida-category-select {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    max-width: 100% !important;
   }
   .page-tabla-rapida .tabla-rapida-nav-row > div:first-child > button,
   .page-tabla-rapida .tabla-rapida-nav-and-week-row .tabla-rapida-nav-arrow-btn {
