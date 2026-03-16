@@ -81,6 +81,8 @@ export default function TablaRapida() {
   const dateInputRef = useRef(null);
   const categoryDropdownRef = useRef(null);
   const hasSetDefaultDayForMonth = useRef(false);
+  const [searchText, setSearchText] = useState('');
+  const [tableBusy, setTableBusy] = useState(false);
 
   useEffect(() => {
     if (!categoryDropdownOpen) return;
@@ -112,6 +114,13 @@ export default function TablaRapida() {
     const clearId = setTimeout(() => setHighlightedEntryId(null), 4000);
     return () => { clearTimeout(id); clearTimeout(clearId); };
   }, [highlightedEntryId]);
+
+  useEffect(() => {
+    // Pequeño esqueleto visual cuando cambia mes/día
+    setTableBusy(true);
+    const id = setTimeout(() => setTableBusy(false), 220);
+    return () => clearTimeout(id);
+  }, [month, year, selectedDay]);
 
   useLayoutHeader('Tabla rápida');
 
@@ -174,6 +183,8 @@ export default function TablaRapida() {
       return next;
     });
   };
+
+  // Navegación de mes/año avanzada se puede añadir aquí más adelante si hace falta
 
   const load = () => {
     setLoading(true);
@@ -324,8 +335,16 @@ export default function TablaRapida() {
       const catId = filterCategoryId === 'none' ? null : Number(filterCategoryId);
       list = list.filter((e) => (e.categoryId == null ? null : e.categoryId) === catId);
     }
+    const q = (searchText || '').trim().toLowerCase();
+    if (q) {
+      list = list.filter((e) => {
+        const name = (e.name || '').toLowerCase();
+        const notes = (e.notes || '').toLowerCase();
+        return name.includes(q) || notes.includes(q);
+      });
+    }
     return list;
-  }, [displayedEntries, filterType, filterCategoryId]);
+  }, [displayedEntries, filterType, filterCategoryId, searchText]);
 
   const categoryFilterOptions = useMemo(() => {
     const base = [
@@ -339,10 +358,10 @@ export default function TablaRapida() {
   }, [categories, categorySearchQuery]);
 
   const filterCategoryLabel = filterCategoryId === ''
-    ? 'Selecciona una categoría'
+    ? 'Categoría'
     : filterCategoryId === 'none'
       ? 'Sin categoría'
-      : (categories.find((c) => String(c.id) === filterCategoryId)?.name) || 'Selecciona una categoría';
+      : (categories.find((c) => String(c.id) === filterCategoryId)?.name) || 'Categoría';
 
   const totals = useMemo(() => {
     let expense = 0;
@@ -553,16 +572,16 @@ export default function TablaRapida() {
     topBtn: { padding: '0.5rem 1rem', fontSize: '0.9rem', fontWeight: 600, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', cursor: 'pointer', transition: 'background 0.15s, color 0.15s, border-color 0.15s' },
     topBtnActive: { background: 'var(--surface-hover)', color: 'var(--accent)', border: '1px solid var(--accent)' },
     addCombo: { display: 'inline-flex', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)' },
-    addComboBtn: { padding: '0.35rem 0.65rem', fontSize: '1.05rem', fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'background 0.15s, color 0.15s', lineHeight: 1 },
+    addComboBtn: { padding: '0.22rem 0.6rem', fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'background 0.15s, color 0.15s', lineHeight: 1 },
     addComboMinus: { background: 'var(--expense)', color: '#fff' },
     addComboPlus: { background: 'var(--income)', color: '#fff' },
     quickBar: {
       display: 'flex',
       flexWrap: 'wrap',
       alignItems: 'center',
-      gap: '0.5rem',
-      marginBottom: '1rem',
-      padding: '0.6rem 1rem',
+      gap: '0.4rem',
+      marginBottom: '0.85rem',
+      padding: '0.45rem 0.8rem',
       background: 'var(--surface)',
       border: '1px solid var(--border)',
       borderRadius: 'var(--radius)',
@@ -573,18 +592,18 @@ export default function TablaRapida() {
     quickChip: {
       display: 'inline-flex',
       alignItems: 'center',
-      gap: '0.35rem',
-      padding: '0.4rem 0.75rem',
+      gap: '0.28rem',
+      padding: '0.28rem 0.6rem',
       border: 'none',
       borderRadius: 'var(--radius)',
       fontWeight: 500,
-      fontSize: '0.9rem',
+      fontSize: '0.8rem',
       cursor: 'pointer',
       color: '#fff',
     },
     quickChipExpense: { background: 'var(--expense)' },
     quickChipIncome: { background: 'var(--income)' },
-    quickChipIconOnly: { minWidth: '2.5rem', minHeight: '2.5rem', padding: '0.4rem', justifyContent: 'center' },
+    quickChipIconOnly: { minWidth: '2.1rem', minHeight: '2.1rem', padding: '0.24rem', justifyContent: 'center' },
     quickChipFixed: { background: 'transparent', color: 'var(--expense)', border: '2px solid var(--expense)' },
     quickChipIcon: { fontSize: '1.2rem', lineHeight: 1 },
     addBtn: { padding: '0.5rem 1.25rem', fontSize: '0.95rem', fontWeight: 600, border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', background: 'var(--accent)', color: '#fff', marginBottom: '1rem' },
@@ -646,32 +665,66 @@ export default function TablaRapida() {
     navMonthLabel: { fontSize: '1rem', fontWeight: 600, color: 'var(--text)', minWidth: '8rem', textAlign: 'left' },
     categoryFilterWrap: { display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' },
     categoryFilterLabel: { fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500, margin: 0 },
-    categoryFilterSelect: { padding: '0.3rem 0.55rem', fontSize: '0.88rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text)', minWidth: '7rem', minHeight: '2rem', boxSizing: 'border-box', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center' },
+    // Panel de filtros (debajo de los botones de añadir)
+    filterPanel: { marginBottom: '0.75rem', padding: '0.6rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column', gap: '0.35rem' },
+    filterPanelHeader: { fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 },
+    filterPanelRow: { display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'nowrap' },
+    // Columnas del panel: categoría más ancha que concepto
+    filterPanelCol: { flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center' },
+    // Panel de pestañas: sin doble fondo, solo alineación
+    filterTabsPanel: { margin: '0.25rem 0 0.5rem 0', padding: 0 },
+    // Filtros (categoría / buscar / papelera) – mismos altos
+    categoryFilterSelect: {
+      padding: '0.35rem 0.7rem',
+      fontSize: '0.9rem',
+      background: 'var(--surface)',
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius)',
+      color: 'var(--text)',
+      minWidth: '9rem',
+      width: '100%',
+      minHeight: '2.4rem',
+      boxSizing: 'border-box',
+      cursor: 'pointer',
+      textAlign: 'left',
+      display: 'flex',
+      alignItems: 'center',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    },
     categoryDropdown: { position: 'relative', overflow: 'visible' },
     categoryDropdownPanel: { position: 'absolute', top: '100%', left: 0, marginTop: '0.2rem', minWidth: '12rem', maxWidth: '20rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 50, padding: '0.35rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' },
     categoryDropdownSearch: { padding: '0.4rem 0.5rem', fontSize: '0.85rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg)', color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box', flexShrink: 0 },
     categoryDropdownList: { overflowY: 'auto', minHeight: '8rem', maxHeight: '14rem' },
     categoryDropdownOption: { display: 'block', width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.85rem', textAlign: 'left', border: 'none', borderRadius: 'var(--radius)', background: 'transparent', color: 'var(--text)', cursor: 'pointer' },
     categoryDropdownOptionHover: { background: 'var(--surface-hover)' },
-    filterCombo: { display: 'inline-flex', flexWrap: 'wrap', gap: 0, marginBottom: 0 },
-    filterComboBtn: { padding: '0.4rem 0.85rem', fontSize: '0.82rem', fontWeight: 500, borderTop: '1px solid var(--border)', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)', borderBottom: 'none', borderRadius: 'var(--radius) var(--radius) 0 0', marginBottom: '-1px', background: 'var(--surface-hover)', color: 'var(--text-muted)', cursor: 'pointer', transition: 'background 0.15s, color 0.15s, border-color 0.15s', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' },
+    filterCombo: { display: 'inline-flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: 0 },
+    // Botones de filtro (gastos / ingresos / ambos) en formato botón plano
+    filterComboBtn: { padding: '0.35rem 0.9rem', fontSize: '0.82rem', fontWeight: 500, border: '1px solid var(--border)', borderRadius: '999px', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', transition: 'background 0.15s, color 0.15s, border-color 0.15s', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' },
     filterComboGastos: {},
     filterComboIngresos: {},
     filterComboTodo: {},
     filterComboActive: { opacity: 1 },
-    filterComboActiveGastos: { background: 'var(--accent)', color: '#fff', borderTop: '1px solid var(--accent)', borderLeft: '1px solid var(--accent)', borderRight: '1px solid var(--accent)', borderBottom: '1px solid var(--surface)', zIndex: 1, boxShadow: '0 1px 0 0 var(--surface)' },
-    filterComboActiveIngresos: { background: 'var(--accent)', color: '#fff', borderTop: '1px solid var(--accent)', borderLeft: '1px solid var(--accent)', borderRight: '1px solid var(--accent)', borderBottom: '1px solid var(--surface)', zIndex: 1, boxShadow: '0 1px 0 0 var(--surface)' },
-    filterComboActiveTodo: { background: 'var(--accent)', color: '#fff', borderTop: '1px solid var(--accent)', borderLeft: '1px solid var(--accent)', borderRight: '1px solid var(--accent)', borderBottom: '1px solid var(--surface)', zIndex: 1, boxShadow: '0 1px 0 0 var(--surface)' },
+    filterComboActiveGastos: { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' },
+    filterComboActiveIngresos: { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' },
+    filterComboActiveTodo: { background: 'var(--accent)', color: '#fff', borderColor: 'var(--accent)' },
     filterClearBtn: { padding: '0.3rem 0.55rem', fontSize: '0.88rem', fontWeight: 600, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', boxSizing: 'border-box', height: '100%', minHeight: '2rem' },
-    filterClearIconBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', boxSizing: 'border-box', width: '2rem', height: '2rem', flexShrink: 0 },
+    // Botón papelera: mismo alto que los inputs
+    filterClearIconBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', boxSizing: 'border-box', width: '2.4rem', height: '2.4rem', minWidth: '2.4rem', minHeight: '2.4rem', flexShrink: 0 },
+    filterSectionHeader: { fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0.35rem 0.75rem 0.15rem 0.75rem' },
+    // Input de búsqueda: mismo "peso" que categoría (50/50)
+    filterSearchRow: { display: 'flex', justifyContent: 'flex-start', flex: '1 1 0', minWidth: 0 },
+    filterSearchInput: { width: '100%', padding: '0.35rem 0.7rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: '0.9rem', boxSizing: 'border-box', height: '2.4rem' },
+    tableSkeletonOverlay: { position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.06), rgba(255,255,255,0.02))', pointerEvents: 'none', animation: 'tabla-rapida-skeleton 1.2s infinite', borderRadius: 'var(--radius)' },
     dayTabsWrap: { display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.5rem' },
     dayTab: { padding: '0.4rem 0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer' },
     dayTabActive: { background: 'var(--surface-hover)', color: 'var(--accent)', border: '1px solid var(--accent)' },
     navAndWeekRow: { display: 'flex', flexDirection: 'column', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' },
-    navMonthBlock: { display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem' },
+    navMonthBlock: { display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.25rem' },
     navAndWeekRowLabelMonth: { minWidth: '6rem', textAlign: 'center', fontWeight: 600 },
     navAndWeekRowControlsWeek: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '2rem', minWidth: 0 },
-    navCategoryBlock: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem' },
+    navCategoryBlock: { display: 'none' },
     navAndWeekRowLabelCat: {},
     navAndWeekRowControlsCat: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', height: '2rem', flexWrap: 'wrap' },
     weekStripWrap: { display: 'flex', justifyContent: 'center', width: '100%', marginBottom: 0 },
@@ -735,28 +788,6 @@ export default function TablaRapida() {
         >
           Fijos
         </button>
-        <div style={styles.addCombo} className="tabla-rapida-add-combo" role="group" aria-label="Añadir gasto o ingreso">
-          <button
-            type="button"
-            onClick={() => openAddModal('expense')}
-            style={{ ...styles.addComboBtn, ...styles.addComboMinus }}
-            className="touch-target"
-            title="Añadir gasto"
-            aria-label="Añadir gasto"
-          >
-            −
-          </button>
-          <button
-            type="button"
-            onClick={() => openAddModal('income')}
-            style={{ ...styles.addComboBtn, ...styles.addComboPlus }}
-            className="touch-target"
-            title="Añadir ingreso"
-            aria-label="Añadir ingreso"
-          >
-            +
-          </button>
-        </div>
       </div>
 
       {showQuickBar && hasQuickTemplates && (
@@ -985,183 +1016,328 @@ export default function TablaRapida() {
       {loading ? (
         <Loader />
       ) : (
-        <>
-          {!loading && (
-            <div className="tabla-rapida-nav-and-week-row" style={styles.navAndWeekRow}>
-              {/* Escritorio: mes | franja días | categoría en una fila. Móvil: apilados */}
-              <div className="tabla-rapida-nav-month-block" style={styles.navMonthBlock} role="navigation" aria-label="Mes y año">
-                <button type="button" onClick={prevMonth} style={styles.navMonthBtn} className="touch-target tabla-rapida-nav-arrow-btn" aria-label="Mes anterior">‹</button>
-                <span className="tabla-rapida-nav-month-label" style={{ ...styles.navMonthLabel, ...styles.navAndWeekRowLabelMonth }}>{MONTHS[month - 1]} {year}</span>
-                <button type="button" onClick={nextMonth} style={styles.navMonthBtn} className="touch-target tabla-rapida-nav-arrow-btn" aria-label="Mes siguiente">›</button>
-              </div>
-              <div className="tabla-rapida-week-strip-wrap" style={styles.navAndWeekRowControlsWeek}>
-                <div style={styles.weekStripOuter} role="tablist" aria-label="Día del mes">
-                  <button type="button" onClick={goPrevWeek} style={styles.weekStripNavBtn} className="touch-target tabla-rapida-nav-arrow-btn" aria-label="Semana anterior" title="Semana anterior">‹</button>
-                  <div style={styles.weekStripSingle} className="tabla-rapida-week-strip">
-                    <div
-                      style={{ ...styles.weekCellAll, ...(selectedDay === '' ? styles.weekCellColHighlight : {}) }}
-                      onClick={() => selectDay('')}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectDay(''); } }}
-                      aria-selected={selectedDay === ''}
-                      aria-label="Ver todos los días"
-                    >
-                      <span style={{ ...styles.weekCellAllLabel, ...(selectedDay === '' ? { color: 'var(--accent)', fontWeight: 700 } : {}) }}>All</span>
-                    </div>
-                    {WEEKDAY_LETTERS.map((letter, col) => {
-                      const dayNum = displayWeek[col];
-                      const isColSelected = dayNum !== null && selectedDay === String(dayNum);
-                      const isColToday = dayNum !== null && month === currentMonth && year === currentYear && dayNum === now.getDate();
-                      const colHighlight = isColSelected || isColToday;
-                      return (
-                        <div key={`l-${col}`} style={{ ...styles.weekCell, ...(col === 6 ? styles.weekCellLast : {}), ...(colHighlight ? styles.weekCellColHighlight : {}) }}>
-                          <span style={styles.weekCellLetter}>{letter}</span>
-                        </div>
-                      );
-                    })}
-                    {displayWeek.map((dayNum, col) => {
-                      const isToday = dayNum !== null && month === currentMonth && year === currentYear && dayNum === now.getDate();
-                      const isSelected = dayNum !== null && selectedDay === String(dayNum);
-                      const colHighlight = isSelected || isToday;
-                      return (
-                        <div key={`d-${col}`} style={{ ...styles.weekCell, ...(col === 6 ? styles.weekCellLast : {}), ...(colHighlight ? styles.weekCellColHighlight : {}) }}>
-                          {dayNum !== null ? (
-                            <button
-                              type="button"
-                              role="tab"
-                              aria-selected={isSelected}
-                              aria-current={isToday ? 'date' : undefined}
-                              style={{ ...styles.weekCellDate, ...(isSelected ? styles.weekCellDateHighlight : isToday ? styles.weekCellDateToday : {}) }}
-                              className="touch-target"
-                              onClick={() => selectDay(String(dayNum))}
-                            >
-                              {dayNum}
-                            </button>
-                          ) : (
-                            <span style={styles.weekCellDateEmpty} aria-hidden="true">.</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <button type="button" onClick={goNextWeek} style={styles.weekStripNavBtn} className="touch-target tabla-rapida-nav-arrow-btn" aria-label="Semana siguiente" title="Semana siguiente">›</button>
-                </div>
-              </div>
-              <div className="tabla-rapida-nav-category-block" style={styles.navCategoryBlock}>
-                <div className="tabla-rapida-category-filter" style={styles.navAndWeekRowControlsCat}>
-                  <div ref={categoryDropdownRef} style={styles.categoryDropdown}>
-                    <button
-                      type="button"
-                      id="tabla-rapida-filter-cat"
-                      onClick={() => setCategoryDropdownOpen((o) => !o)}
-                      className="tabla-rapida-category-select touch-target"
-                      style={styles.categoryFilterSelect}
-                      aria-label="Filtrar por categoría"
-                      aria-expanded={categoryDropdownOpen}
-                      aria-haspopup="listbox"
-                    >
-                      {filterCategoryLabel}
-                    </button>
-                    {categoryDropdownOpen && (
-                      <div style={styles.categoryDropdownPanel} role="listbox">
-                        <input
-                          type="text"
-                          placeholder="Buscar categoría..."
-                          value={categorySearchQuery}
-                          onChange={(e) => setCategorySearchQuery(e.target.value)}
-                          style={styles.categoryDropdownSearch}
-                          autoFocus
-                          aria-label="Buscar categoría"
-                        />
-                        <div style={styles.categoryDropdownList}>
-                          {categoryFilterOptions.map((opt) => (
-                            <button
-                              key={opt.value === '' ? 'all' : opt.value}
-                              type="button"
-                              role="option"
-                              aria-selected={filterCategoryId === opt.value}
-                              style={styles.categoryDropdownOption}
-                              className="touch-target tabla-rapida-cat-option"
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => { setFilterCategoryId(opt.value); setCategoryDropdownOpen(false); setCategorySearchQuery(''); }}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <button type="button" onClick={() => { setFilterType('all'); setFilterCategoryId(''); goToToday(); }} style={styles.filterClearIconBtn} className="touch-target tabla-rapida-clear-btn" title="Quitar filtros y volver al día actual" aria-label="Limpiar filtros y volver al día actual">
-                    <IconTrash size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="tabla-rapida-tabs-and-table" style={styles.tabsTableWrap}>
-            <div className="tabla-rapida-filter-combo-strip" style={styles.filterComboStrip} role="group" aria-label="Filtrar por tipo">
-              <button
-                type="button"
-                onClick={() => setFilterType('expense')}
-                style={{
-                  ...styles.filterComboBtn,
-                  ...styles.filterComboGastos,
-                  ...(filterType === 'expense' ? { ...styles.filterComboActive, ...styles.filterComboActiveGastos } : {}),
-                }}
-                className="touch-target"
-                title="Solo gastos"
-                aria-pressed={filterType === 'expense'}
-              >
-                <IconChevronDown size={14} style={{ color: filterType === 'expense' ? '#fff' : 'var(--expense)' }} />
-                <span>gastos</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterType('income')}
-                style={{
-                  ...styles.filterComboBtn,
-                  ...styles.filterComboIngresos,
-                  ...(filterType === 'income' ? { ...styles.filterComboActive, ...styles.filterComboActiveIngresos } : {}),
-                }}
-                className="touch-target"
-                title="Solo ingresos"
-                aria-pressed={filterType === 'income'}
-              >
-                <IconChevronUp size={14} style={{ color: filterType === 'income' ? '#fff' : 'var(--income)' }} />
-                <span>ingresos</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterType('all')}
-                style={{
-                  ...styles.filterComboBtn,
-                  ...styles.filterComboTodo,
-                  ...(filterType === 'all' ? { ...styles.filterComboActive, ...styles.filterComboActiveTodo } : {}),
-                }}
-                className="touch-target"
-                title="Ver todo"
-                aria-pressed={filterType === 'all'}
-              >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
-                  <IconChevronUp size={12} style={{ color: filterType === 'all' ? '#fff' : 'var(--income)' }} />
-                  <IconChevronDown size={12} style={{ color: filterType === 'all' ? '#fff' : 'var(--expense)' }} />
+        <div>
+          {/* Navegación: mes, semana y categoría */}
+          <div className="tabla-rapida-nav-and-week-row" style={styles.navAndWeekRow}>
+            <div className="tabla-rapida-nav-month-block" style={styles.navMonthBlock} role="navigation" aria-label="Mes y año">
+              <button type="button" onClick={prevMonth} style={styles.navMonthBtn} className="touch-target tabla-rapida-nav-arrow-btn" aria-label="Mes anterior">‹</button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '2rem', lineHeight: 1 }}>
+                <span className="tabla-rapida-nav-month-label" style={{ ...styles.navMonthLabel, ...styles.navAndWeekRowLabelMonth, fontSize: '0.9rem' }}>
+                  {MONTHS[month - 1]} {year}
                 </span>
-                <span>todos</span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={goToToday}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goToToday(); } }}
+                  style={{ color: 'var(--accent)', fontSize: '0.7rem', cursor: 'pointer', padding: 0, display: 'block' }}
+                >
+                  Ir a hoy
+                </span>
+              </div>
+              <button type="button" onClick={nextMonth} style={styles.navMonthBtn} className="touch-target tabla-rapida-nav-arrow-btn" aria-label="Mes siguiente">›</button>
+            </div>
+
+            <div className="tabla-rapida-week-strip-wrap" style={styles.navAndWeekRowControlsWeek}>
+              <div style={styles.weekStripOuter} role="tablist" aria-label="Día del mes">
+                <button type="button" onClick={goPrevWeek} style={styles.weekStripNavBtn} className="touch-target tabla-rapida-nav-arrow-btn" aria-label="Semana anterior" title="Semana anterior">‹</button>
+                <div style={styles.weekStripSingle} className="tabla-rapida-week-strip">
+                  <div
+                    style={{ ...styles.weekCellAll, ...(selectedDay === '' ? styles.weekCellColHighlight : {}) }}
+                    onClick={() => selectDay('')}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectDay(''); } }}
+                    aria-selected={selectedDay === ''}
+                    aria-label="Ver todos los días"
+                  >
+                    <span style={{ ...styles.weekCellAllLabel, ...(selectedDay === '' ? { color: 'var(--accent)', fontWeight: 700 } : {}) }}>All</span>
+                  </div>
+                  {WEEKDAY_LETTERS.map((letter, col) => {
+                    const dayNum = displayWeek[col];
+                    const isColSelected = dayNum !== null && selectedDay === String(dayNum);
+                    const isColToday = dayNum !== null && month === currentMonth && year === currentYear && dayNum === now.getDate();
+                    const colHighlight = isColSelected || isColToday;
+                    return (
+                      <div key={`l-${col}`} style={{ ...styles.weekCell, ...(col === 6 ? styles.weekCellLast : {}), ...(colHighlight ? styles.weekCellColHighlight : {}) }}>
+                        <span style={styles.weekCellLetter}>{letter}</span>
+                      </div>
+                    );
+                  })}
+                  {displayWeek.map((dayNum, col) => {
+                    const isToday = dayNum !== null && month === currentMonth && year === currentYear && dayNum === now.getDate();
+                    const isSelected = dayNum !== null && selectedDay === String(dayNum);
+                    const colHighlight = isSelected || isToday;
+                    return (
+                      <div key={`d-${col}`} style={{ ...styles.weekCell, ...(col === 6 ? styles.weekCellLast : {}), ...(colHighlight ? styles.weekCellColHighlight : {}) }}>
+                        {dayNum !== null ? (
+                          <button
+                            type="button"
+                            role="tab"
+                            aria-selected={isSelected}
+                            aria-current={isToday ? 'date' : undefined}
+                            style={{ ...styles.weekCellDate, ...(isSelected ? styles.weekCellDateHighlight : isToday ? styles.weekCellDateToday : {}) }}
+                            className="touch-target"
+                            onClick={() => selectDay(String(dayNum))}
+                          >
+                            {dayNum}
+                          </button>
+                        ) : (
+                          <span style={styles.weekCellDateEmpty} aria-hidden="true">.</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <button type="button" onClick={goNextWeek} style={styles.weekStripNavBtn} className="touch-target tabla-rapida-nav-arrow-btn" aria-label="Semana siguiente" title="Semana siguiente">›</button>
+              </div>
+            </div>
+
+            <div className="tabla-rapida-nav-category-block" style={styles.navCategoryBlock}>
+              <div className="tabla-rapida-category-filter" style={styles.navAndWeekRowControlsCat}>
+                <div ref={categoryDropdownRef} style={styles.categoryDropdown}>
+                  <button
+                    type="button"
+                    id="tabla-rapida-filter-cat"
+                    onClick={() => setCategoryDropdownOpen((o) => !o)}
+                    className="tabla-rapida-category-select touch-target"
+                    style={styles.categoryFilterSelect}
+                    aria-label="Filtrar por categoría"
+                    aria-expanded={categoryDropdownOpen}
+                    aria-haspopup="listbox"
+                  >
+                    {filterCategoryLabel}
+                  </button>
+                  {categoryDropdownOpen && (
+                    <div style={styles.categoryDropdownPanel} role="listbox">
+                      <input
+                        type="text"
+                        placeholder="Buscar categoría..."
+                        value={categorySearchQuery}
+                        onChange={(e) => setCategorySearchQuery(e.target.value)}
+                        style={styles.categoryDropdownSearch}
+                        autoFocus
+                        aria-label="Buscar categoría"
+                      />
+                      <div style={styles.categoryDropdownList}>
+                        {categoryFilterOptions.map((opt) => (
+                          <button
+                            key={opt.value === '' ? 'all' : opt.value}
+                            type="button"
+                            role="option"
+                            aria-selected={filterCategoryId === opt.value}
+                            style={styles.categoryDropdownOption}
+                            className="touch-target tabla-rapida-cat-option"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => { setFilterCategoryId(opt.value); setCategoryDropdownOpen(false); setCategorySearchQuery(''); }}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setFilterType('all'); setFilterCategoryId(''); goToToday(); }}
+                  style={styles.filterClearIconBtn}
+                  className="touch-target tabla-rapida-clear-btn"
+                  title="Quitar filtros y volver al día actual"
+                  aria-label="Limpiar filtros y volver al día actual"
+                >
+                  <IconTrash size={14} />
+                </button>
+              </div>
+              {/* Buscar por concepto: debajo de categoría + papelera */}
+              <div style={styles.filterSearchRow}>
+                <input
+                  type="text"
+                  placeholder="Buscar por concepto..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  style={styles.filterSearchInput}
+                  aria-label="Buscar por concepto"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Botones de añadir encima de la tabla */}
+          <div className="tabla-rapida-add-combo" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginBottom: '0.35rem' }}>
+            <button
+              type="button"
+              onClick={() => openAddModal('expense')}
+              style={{ ...styles.addComboBtn, ...styles.addComboMinus, borderRadius: 'var(--radius)' }}
+              className="touch-target"
+              title="Añadir gasto"
+              aria-label="Añadir gasto"
+            >
+              Añadir gasto
+            </button>
+            <button
+              type="button"
+              onClick={() => openAddModal('income')}
+              style={{ ...styles.addComboBtn, ...styles.addComboPlus, borderRadius: 'var(--radius)' }}
+              className="touch-target"
+              title="Añadir ingreso"
+              aria-label="Añadir ingreso"
+            >
+              Añadir ingreso
+            </button>
+          </div>
+
+          {/* Panel de filtros simple: categoría + concepto + limpiar */}
+          <div className="tabla-rapida-filter-panel" style={styles.filterPanel}>
+            <div style={styles.filterPanelHeader}>Filtros</div>
+            <div style={styles.filterPanelRow}>
+              {/* Columna 1: categoría (flex 1 1 0) */}
+              <div className="tabla-rapida-filter-panel-col" style={styles.filterPanelCol}>
+                <div ref={categoryDropdownRef} style={{ ...styles.categoryDropdown, width: '100%' }}>
+                  <button
+                    type="button"
+                    id="tabla-rapida-filter-cat"
+                    onClick={() => setCategoryDropdownOpen((o) => !o)}
+                    className="tabla-rapida-category-select touch-target"
+                    style={styles.categoryFilterSelect}
+                    aria-label="Filtrar por categoría"
+                    aria-expanded={categoryDropdownOpen}
+                    aria-haspopup="listbox"
+                  >
+                    {filterCategoryLabel}
+                  </button>
+                  {categoryDropdownOpen && (
+                    <div style={styles.categoryDropdownPanel} role="listbox">
+                      <input
+                        type="text"
+                        placeholder="Buscar categoría..."
+                        value={categorySearchQuery}
+                        onChange={(e) => setCategorySearchQuery(e.target.value)}
+                        style={styles.categoryDropdownSearch}
+                        autoFocus
+                        aria-label="Buscar categoría"
+                      />
+                      <div style={styles.categoryDropdownList}>
+                        {categoryFilterOptions.map((opt) => (
+                          <button
+                            key={opt.value === '' ? 'all' : opt.value}
+                            type="button"
+                            role="option"
+                            aria-selected={filterCategoryId === opt.value}
+                            style={styles.categoryDropdownOption}
+                            className="touch-target tabla-rapida-cat-option"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              setFilterCategoryId(opt.value);
+                              setCategoryDropdownOpen(false);
+                              setCategorySearchQuery('');
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Columna 2: buscar por concepto (flex 1 1 0) */}
+              <div style={styles.filterPanelCol}>
+                <input
+                  type="text"
+                  placeholder="Buscar por concepto..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  style={styles.filterSearchInput}
+                  aria-label="Buscar por concepto"
+                />
+              </div>
+
+              {/* Botón limpiar filtros */}
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterType('all');
+                  setFilterCategoryId('');
+                  setSearchText('');
+                  goToToday();
+                }}
+                style={styles.filterClearIconBtn}
+                className="touch-target tabla-rapida-clear-btn"
+                title="Quitar filtros y volver al día actual"
+                aria-label="Limpiar filtros y volver al día actual"
+              >
+                <IconTrash size={16} />
               </button>
             </div>
-            <div className={`tabla-rapida-table-wrap ${isNarrowScreen ? 'tabla-rapida-narrow' : ''}`} style={styles.tableWrap}>
-            {filteredDisplayedEntries.length === 0 ? (
-              <p style={styles.empty}>
-                {entriesInMonth.length === 0
-                  ? `No hay anotaciones en ${MONTHS[month - 1]} ${year}. Usa los rápidos o el formulario.`
-                  : selectedDay === ''
-                    ? `No hay anotaciones en ${MONTHS[month - 1]} ${year}.`
-                    : `No hay anotaciones el día ${selectedDay}.`}
-              </p>
-            ) : (
-              <table className="tabla-rapida-excel" style={styles.table}>
+          </div>
+
+          {/* Botones de filtro tipo Rápidos / Fijos (formato topBtn) */}
+          <div style={{ ...styles.topButtons, marginBottom: '0.75rem' }} role="group" aria-label="Filtrar por tipo">
+            <button
+              type="button"
+              onClick={() => setFilterType('expense')}
+              style={{
+                ...styles.topBtn,
+                ...(filterType === 'expense' ? styles.topBtnActive : {}),
+              }}
+              className="touch-target"
+              title="Solo gastos"
+              aria-pressed={filterType === 'expense'}
+            >
+              Gastos
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('income')}
+              style={{
+                ...styles.topBtn,
+                ...(filterType === 'income' ? styles.topBtnActive : {}),
+              }}
+              className="touch-target"
+              title="Solo ingresos"
+              aria-pressed={filterType === 'income'}
+            >
+              Ingresos
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('all')}
+              style={{
+                ...styles.topBtn,
+                ...(filterType === 'all' ? styles.topBtnActive : {}),
+              }}
+              className="touch-target"
+              title="Ver ambos"
+              aria-pressed={filterType === 'all'}
+            >
+              Ambos
+            </button>
+          </div>
+
+          {/* Tabla */}
+          <div className="tabla-rapida-tabs-and-table" style={styles.tabsTableWrap}>
+            <div className={`tabla-rapida-table-wrap ${isNarrowScreen ? 'tabla-rapida-narrow' : ''}`} style={{ ...styles.tableWrap, position: 'relative' }}>
+              {filteredDisplayedEntries.length === 0 ? (
+                <p style={styles.empty}>
+                  {entriesInMonth.length === 0
+                    ? `No hay anotaciones en ${MONTHS[month - 1]} ${year}. Usa los rápidos o los botones de añadir para registrar tu primer movimiento.`
+                    : selectedDay === ''
+                      ? 'No hay anotaciones que coincidan con los filtros actuales. Prueba a limpiar filtros o cambiar de categoría.'
+                      : `No hay anotaciones el día ${selectedDay} que coincidan con los filtros actuales.`}
+                </p>
+              ) : (
+                <>
+                  {/* Total de lo que se ve actualmente en la tabla (respeta filtros) */}
+                  <div style={{ padding: '0.35rem 0.75rem 0.25rem 0.75rem', fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'flex-end' }}>
+                    <span style={{ fontWeight: 600, marginRight: '0.35rem' }}>Total:</span>
+                    <span style={{ fontWeight: 600, color: totals.balance >= 0 ? 'var(--income)' : 'var(--expense)' }}>
+                      {fmt(totals.balance)}
+                    </span>
+                  </div>
+
+                  <table className="tabla-rapida-excel" style={styles.table}>
                 <thead>
                   <tr>
                     <th style={styles.th} onClick={() => handleSort('date')} title="Ordenar por fecha">
@@ -1300,8 +1476,10 @@ export default function TablaRapida() {
                     );
                   })}
                 </tbody>
-              </table>
-            )}
+                  </table>
+                </>
+              )}
+            {tableBusy && <div style={styles.tableSkeletonOverlay} aria-hidden="true" />}
             </div>
           </div>
           {!loading && summaryByCategory.length > 0 && (
@@ -1401,7 +1579,7 @@ export default function TablaRapida() {
               )}
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
