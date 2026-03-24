@@ -60,7 +60,7 @@ export default function LockScreen() {
     <div className="lock-page">
       <div className="lock-card">
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-          <IconLogo size={48} style={{ color: 'var(--accent)' }} />
+          <IconLogo size={96} />
         </div>
         <h1 className="lock-title">Desbloquear</h1>
         <p className="lock-subtitle">

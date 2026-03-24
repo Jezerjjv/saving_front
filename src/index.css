@@ -156,10 +156,11 @@ body {
 .auth-card {
   position: relative;
   width: 100%;
-  max-width: 400px;
-  padding: 2rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  max-width: 340px;
+  padding: 1.6rem;
+  /* Fondo más parecido al del logo para que no se vean dos tonos distintos */
+  background: #05070b;
+  border: 1px solid #181c23;
   border-radius: var(--radius-card);
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
 }
@@ -176,14 +177,14 @@ body {
 }
 .auth-title {
   margin: 0 0 0.25rem 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   text-align: center;
   color: var(--text);
 }
 .auth-subtitle {
   margin: 0 0 1.5rem 0;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
   text-align: center;
 }
@@ -1382,6 +1383,12 @@ input[type="date"].input-date-picker {
 }
 .layout-footer-year {
   font-variant-numeric: tabular-nums;
+}
+/* En Tabla Rápida móvil, espacio bajo el footer para que no quede tapado por la barra fija */
+@media (max-width: 640px) {
+  main:has(.page-tabla-rapida) .layout-footer {
+    margin-bottom: 5.5rem;
+  }
 }
 .sidebar-toggle {
   display: none;

@@ -85,7 +85,7 @@ export default function Login() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-logo">
-          <IconLogo size={48} />
+          <IconLogo size={96} />
         </div>
         <p className="auth-subtitle">
           {showPinOrBio

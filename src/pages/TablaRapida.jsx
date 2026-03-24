@@ -673,6 +673,49 @@ export default function TablaRapida() {
     filterPanelCol: { flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'center' },
     // Panel de pestañas: sin doble fondo, solo alineación
     filterTabsPanel: { margin: '0.25rem 0 0.5rem 0', padding: 0 },
+    // Barra inferior móvil (solo en pantallas estrechas): fija abajo, siempre visible
+    mobileBottomBar: {
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      zIndex: 100,
+      background: 'var(--surface)',
+      borderTop: '1px solid var(--border)',
+      paddingTop: '0.5rem',
+      paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'stretch',
+    },
+    mobileBottomBarInner: { display: 'flex', width: '100%', maxWidth: '26rem', margin: '0 auto', justifyContent: 'space-around', alignItems: 'stretch', gap: '0.25rem' },
+    mobileBottomBarItem: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '0.25rem',
+      padding: '0.4rem 0.5rem',
+      minHeight: 'var(--touch-min)',
+      cursor: 'pointer',
+      background: 'transparent',
+      border: 'none',
+      color: 'var(--text-muted)',
+      fontSize: '0.7rem',
+      fontWeight: 500,
+      borderRadius: '999px',
+    },
+    mobileBottomBarIcon: {
+      width: '2.5rem',
+      height: '2.5rem',
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '1.2rem',
+      fontWeight: 600,
+    },
     // Filtros (categoría / buscar / papelera) – mismos altos
     categoryFilterSelect: {
       padding: '0.35rem 0.7rem',
@@ -743,6 +786,7 @@ export default function TablaRapida() {
     weekCellDateToday: { color: 'var(--income)', fontWeight: 700 },
     weekCellDateEmpty: { visibility: 'hidden', pointerEvents: 'none' },
     fijosApplyBtn: { padding: '0.35rem 0.75rem', fontSize: '0.85rem', fontWeight: 600, border: 'none', borderRadius: 'var(--radius)', cursor: 'pointer', background: 'var(--accent)', color: '#fff' },
+    fijosPlayBtn: { padding: '0.25rem 0.45rem', fontSize: '0.75rem', background: 'var(--income)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius)' },
     trDetail: { background: 'var(--surface-hover)' },
     trHighlighted: { background: 'color-mix(in srgb, var(--accent) 22%, transparent) !important', boxShadow: 'inset 0 0 0 2px var(--accent)' },
     tdDetail: { padding: '0.5rem 0.75rem', borderRight: 'none', verticalAlign: 'middle' },
@@ -769,28 +813,34 @@ export default function TablaRapida() {
   const hasFixedExpenses = fixedExpenses.length > 0;
 
   return (
-    <div className="page-tabla-rapida" style={styles.wrap}>
-      <div style={styles.topButtons} role="group" aria-label="Acciones rápidas">
-        <button
-          type="button"
-          onClick={() => setShowQuickBar((v) => !v)}
-          style={{ ...styles.topBtn, ...(showQuickBar ? styles.topBtnActive : {}) }}
-          className="touch-target"
-          aria-pressed={showQuickBar}
-        >
-          Rápidos
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowFijosModal(true)}
-          style={styles.topBtn}
-          className="touch-target"
-        >
-          Fijos
-        </button>
-      </div>
+    <div className="page-tabla-rapida" style={{ ...styles.wrap, ...(isNarrowScreen ? { paddingBottom: '5.5rem' } : {}) }}>
+      {/* Pestaña Rápidos solo en escritorio; en móvil no tiene sentido (los chips se muestran igual, Fijos está en la barra inferior) */}
+      {!isNarrowScreen && (
+        <div style={styles.topButtons} role="group" aria-label="Acciones rápidas">
+          <button
+            type="button"
+            onClick={() => setShowQuickBar((v) => !v)}
+            style={{ ...styles.topBtn, ...(showQuickBar ? styles.topBtnActive : {}) }}
+            className="touch-target"
+            aria-pressed={showQuickBar}
+          >
+            Rápidos
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowFijosModal(true)}
+            style={styles.topBtn}
+            className="touch-target"
+            disabled={!hasFixedExpenses}
+            aria-disabled={!hasFixedExpenses}
+            title={!hasFixedExpenses ? 'No hay gastos fijos' : 'Gastos fijos'}
+          >
+            Fijos
+          </button>
+        </div>
+      )}
 
-      {showQuickBar && hasQuickTemplates && (
+      {(showQuickBar || isNarrowScreen) && hasQuickTemplates && (
         <div className="tabla-rapida-quick-bar" style={styles.quickBar}>
           {quickTemplatesExpense.map((t) => {
             const icon = t.icon || categories.find((c) => c.id === t.categoryId)?.icon || '💸';
@@ -974,31 +1024,28 @@ export default function TablaRapida() {
                     <thead>
                       <tr>
                         <th style={styles.th}>Nombre</th>
-                        <th style={styles.th}>Categoría</th>
                         <th style={styles.th}>Importe</th>
                         <th style={{ ...styles.th, ...styles.thActions }}>Acción</th>
                       </tr>
                     </thead>
                     <tbody>
                       {fixedExpenses.map((fe, idx) => {
-                        const cat = categories.find((c) => c.id === fe.categoryId);
-                        const catLabel = cat ? `${cat.icon || ''} ${cat.name}`.trim() : '—';
                         const isApplying = applyingQuickId === `fixed-${fe.id}`;
                         return (
                           <tr key={fe.id} style={{ ...styles.tr, ...(idx % 2 === 1 ? styles.trAlt : {}) }}>
                             <td style={styles.td}>{fe.name}</td>
-                            <td style={styles.td}>{catLabel}</td>
                             <td style={{ ...styles.td, ...styles.tdAmount, color: 'var(--expense)' }}>{fmt(fe.amount)}</td>
                             <td style={styles.tdActions}>
                               <button
                                 type="button"
                                 onClick={() => applyFixedExpense(fe)}
                                 disabled={applyingQuickId !== null}
-                                style={styles.fijosApplyBtn}
+                                style={{ ...styles.fijosApplyBtn, ...styles.fijosPlayBtn }}
                                 className="touch-target"
                                 title="Añadir a la tabla rápida"
+                                aria-label="Añadir a la tabla rápida"
                               >
-                                {isApplying ? '…' : 'Añadir'}
+                                {isApplying ? '…' : '▶'}
                               </button>
                             </td>
                           </tr>
@@ -1163,29 +1210,31 @@ export default function TablaRapida() {
             </div>
           </div>
 
-          {/* Botones de añadir encima de la tabla */}
-          <div className="tabla-rapida-add-combo" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginBottom: '0.35rem' }}>
-            <button
-              type="button"
-              onClick={() => openAddModal('expense')}
-              style={{ ...styles.addComboBtn, ...styles.addComboMinus, borderRadius: 'var(--radius)' }}
-              className="touch-target"
-              title="Añadir gasto"
-              aria-label="Añadir gasto"
-            >
-              Añadir gasto
-            </button>
-            <button
-              type="button"
-              onClick={() => openAddModal('income')}
-              style={{ ...styles.addComboBtn, ...styles.addComboPlus, borderRadius: 'var(--radius)' }}
-              className="touch-target"
-              title="Añadir ingreso"
-              aria-label="Añadir ingreso"
-            >
-              Añadir ingreso
-            </button>
-          </div>
+          {/* Botones de añadir encima de la tabla (solo escritorio; en móvil van en la barra inferior) */}
+          {!isNarrowScreen && (
+            <div className="tabla-rapida-add-combo" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginBottom: '0.35rem' }}>
+              <button
+                type="button"
+                onClick={() => openAddModal('expense')}
+                style={{ ...styles.addComboBtn, ...styles.addComboMinus, borderRadius: 'var(--radius)' }}
+                className="touch-target"
+                title="Añadir gasto"
+                aria-label="Añadir gasto"
+              >
+                Añadir gasto
+              </button>
+              <button
+                type="button"
+                onClick={() => openAddModal('income')}
+                style={{ ...styles.addComboBtn, ...styles.addComboPlus, borderRadius: 'var(--radius)' }}
+                className="touch-target"
+                title="Añadir ingreso"
+                aria-label="Añadir ingreso"
+              >
+                Añadir ingreso
+              </button>
+            </div>
+          )}
 
           {/* Panel de filtros simple: categoría + concepto + limpiar */}
           <div className="tabla-rapida-filter-panel" style={styles.filterPanel}>
@@ -1580,6 +1629,46 @@ export default function TablaRapida() {
             </div>
           )}
         </div>
+      )}
+      {/* Barra inferior tipo nav móvil: solo en pantallas pequeñas; no fija para que se vea el footer */}
+      {isNarrowScreen && (
+        <nav className="tabla-rapida-mobile-bottom-bar" style={styles.mobileBottomBar} aria-label="Acciones rápidas">
+          <div style={styles.mobileBottomBarInner}>
+            <button
+              type="button"
+              onClick={() => openAddModal('expense')}
+              className="touch-target"
+              style={styles.mobileBottomBarItem}
+              title="Añadir gasto"
+              aria-label="Añadir gasto"
+            >
+              <span style={{ ...styles.mobileBottomBarIcon, background: 'var(--expense)', color: '#fff' }}>＋</span>
+              <span>Añadir gasto</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openAddModal('income')}
+              className="touch-target"
+              style={styles.mobileBottomBarItem}
+              title="Añadir ingreso"
+              aria-label="Añadir ingreso"
+            >
+              <span style={{ ...styles.mobileBottomBarIcon, background: 'var(--income)', color: '#fff' }}>＋</span>
+              <span>Añadir ingreso</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowFijosModal(true)}
+              className="touch-target"
+              style={styles.mobileBottomBarItem}
+              title="Gastos fijos"
+              aria-label="Gastos fijos"
+            >
+              <span style={{ ...styles.mobileBottomBarIcon, background: 'var(--surface-hover)', color: 'var(--text)' }}>ƒ</span>
+              <span>Gastos fijos</span>
+            </button>
+          </div>
+        </nav>
       )}
     </div>
   );

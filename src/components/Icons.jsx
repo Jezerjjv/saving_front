@@ -243,13 +243,21 @@ export function IconMenu({ size = defaultSize, style, ...rest }) {
 /**
  * Logo de la app (B + lockSpend). Usa favicon1.svg; el favicon de pestaña es favicon.svg.
  */
-export function IconLogo({ size = 36, style, ...rest }) {
+export function IconLogo({ size = 64, style, ...rest }) {
   return (
     <img
-      src="/favicon1.svg"
-      alt="lockSpend"
-      height={size}
-      style={{ flexShrink: 0, display: 'block', width: 'auto', maxWidth: '100%', ...style }}
+      src="/favicon.svg"
+      alt="BlockSpend"
+      style={{
+        flexShrink: 0,
+        display: 'block',
+        height: size,
+        width: 'auto',
+        maxWidth: '100%',
+        borderRadius: '0.5rem',
+        objectFit: 'cover',
+        ...style,
+      }}
       {...rest}
     />
   );
