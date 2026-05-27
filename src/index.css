@@ -2588,3 +2588,391 @@ input[type="date"].input-date-picker {
     display: none;
   }
 }
+
+/* Cuentas rápida: ancho completo y dos columnas sin scroll horizontal */
+.page-cuentas-rapida {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.page-cuentas-rapida .cuentas-rapida-table-wrap {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.page-cuentas-rapida .cuentas-rapida-table-wrap table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.page-cuentas-rapida .cuentas-rapida-table-wrap th,
+.page-cuentas-rapida .cuentas-rapida-table-wrap td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+.page-cuentas-rapida .cuentas-rapida-moneda-inline {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--accounts .cuentas-rapida-col-cuenta {
+    width: 32%;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--accounts .cuentas-rapida-col-moneda {
+    width: 12%;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--accounts .cuentas-rapida-col-saldo {
+    width: 28%;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--accounts .cuentas-rapida-col-acciones {
+    width: 28%;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}
+
+@media (min-width: 769px) {
+  .layout-main:has(.page-cuentas-rapida) {
+    max-width: none;
+    width: calc(100vw - 260px);
+    margin-left: 260px;
+    margin-right: 0;
+    box-sizing: border-box;
+  }
+
+  .layout-content:has(.page-cuentas-rapida) {
+    overflow-x: hidden;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-config-above {
+    display: none;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-history-hint {
+    display: none;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-accounts-header {
+    padding-right: 0.5rem;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-accounts-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .cuentas-rapida-tables-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    gap: 0;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .cuentas-rapida-panel {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: 1 / -1;
+    min-width: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-sizing: border-box;
+  }
+
+  .cuentas-rapida-accounts-col {
+    grid-column: 1;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+  }
+
+  .cuentas-rapida-history-col {
+    grid-column: 2;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  .cuentas-rapida-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.5rem 0.75rem 0;
+    margin: 0;
+    min-height: 2.25rem;
+    box-sizing: border-box;
+  }
+
+  .cuentas-rapida-panel-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.35rem 0.75rem;
+    margin: 0;
+    min-height: 2.25rem;
+    box-sizing: border-box;
+  }
+
+  .cuentas-rapida-panel-body {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0 0.75rem 0.75rem;
+  }
+
+  .cuentas-rapida-panel-body .cuentas-rapida-table-wrap {
+    flex: 1;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+
+  .cuentas-rapida-panel-body .cuentas-rapida-table-wrap--accounts {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+  }
+
+  .cuentas-rapida-panel-body .cuentas-rapida-table-wrap--history {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: none;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap table {
+    font-size: 0.82rem;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap th,
+  .page-cuentas-rapida .cuentas-rapida-table-wrap td {
+    padding: 0.35rem 0.4rem;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.2rem;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-actions .btn-movement-cr {
+    min-width: 1.5rem;
+    padding: 0.15rem 0.35rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-cuentas-rapida {
+    font-size: 0.8rem;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-top-title {
+    font-size: 0.95rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-top-actions button {
+    font-size: 0.72rem !important;
+    padding: 0.3rem 0.5rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-config-above {
+    padding: 0.5rem 0.65rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-config-above label,
+  .page-cuentas-rapida .cuentas-rapida-config-above span {
+    font-size: 0.72rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-config-above input {
+    font-size: 0.75rem !important;
+    padding: 0.3rem 0.4rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-config-hint {
+    font-size: 0.68rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-accounts-filters {
+    display: none;
+  }
+
+  .cuentas-rapida-panel {
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  .cuentas-rapida-panel-header,
+  .cuentas-rapida-panel-filters {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-panel-header {
+    margin-bottom: 0.5rem !important;
+    min-height: 0;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-panel-header h2 {
+    font-size: 0.85rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-history-nav-label {
+    font-size: 0.72rem !important;
+    min-width: 5.5rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-history-nav-btn {
+    width: 1.65rem !important;
+    height: 1.65rem !important;
+    font-size: 0.85rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-history-filters select {
+    font-size: 0.72rem !important;
+    padding: 0.25rem 0.4rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-history-hint {
+    font-size: 0.68rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .cuentas-rapida-panel-body {
+    padding: 0;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap table {
+    font-size: 0.72rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap th,
+  .page-cuentas-rapida .cuentas-rapida-table-wrap td {
+    padding: 0.28rem 0.35rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-td-amount {
+    font-size: 0.68rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-saldo-eur {
+    font-size: 0.62rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-empty {
+    font-size: 0.75rem !important;
+    padding: 0.75rem !important;
+  }
+
+  /* Tabla cuentas: más espacio para acciones, moneda junto al nombre */
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--accounts .cuentas-rapida-col-moneda {
+    display: none;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-tr-total .cuentas-rapida-col-total-label {
+    font-weight: 700;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-moneda-inline {
+    display: inline;
+    margin-left: 0.2rem;
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--accounts .cuentas-rapida-col-cuenta {
+    width: 34% !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--accounts .cuentas-rapida-col-saldo {
+    width: 26% !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--accounts .cuentas-rapida-col-acciones {
+    width: 40% !important;
+    padding-left: 0.15rem !important;
+    padding-right: 0.15rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-cuenta-nombre {
+    display: block;
+    line-height: 1.2;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-actions {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.2rem;
+    width: 100%;
+    max-width: 100%;
+    justify-items: stretch;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-action-btn {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    height: 1.55rem !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem !important;
+    line-height: 1;
+    box-sizing: border-box;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-action-btn-icon {
+    background: var(--surface-hover);
+    border-radius: var(--radius);
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-actions svg {
+    width: 13px !important;
+    height: 13px !important;
+  }
+
+  /* Histórico: columnas más compactas */
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-fecha {
+    width: 22% !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-cuenta-h {
+    width: 24% !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-cambio,
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-saldo-h,
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-total-h {
+    width: 18% !important;
+  }
+
+  .cuentas-rapida-history-col {
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.65rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+}

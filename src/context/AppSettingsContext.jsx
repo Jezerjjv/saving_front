@@ -1,11 +1,13 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../api';
+import { mergeMenuVisibility } from '../config/sidebarNav';
 
 const AppSettingsContext = createContext(null);
 
 export function AppSettingsProvider({ children }) {
   const [settings, setSettings] = useState({});
   const [loaded, setLoaded] = useState(false);
+  const [interestEligible, setInterestEligible] = useState(false);
 
   useEffect(() => {
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('saving_token') : null;
@@ -14,12 +16,18 @@ export function AppSettingsProvider({ children }) {
       setLoaded(true);
       return;
     }
-    api.settings
-      .get()
-      .then((data) => {
+    Promise.all([
+      api.settings.get(),
+      api.interestHistory.get().catch(() => ({ eligible: false })),
+    ])
+      .then(([data, interest]) => {
         setSettings(data || {});
+        setInterestEligible(interest?.eligible ?? false);
       })
-      .catch(() => setSettings({}))
+      .catch(() => {
+        setSettings({});
+        setInterestEligible(false);
+      })
       .finally(() => setLoaded(true));
   }, []);
 
@@ -46,8 +54,39 @@ export function AppSettingsProvider({ children }) {
   const exchangeRateUsdToEur = settings.exchangeRateUsdToEur != null ? Number(settings.exchangeRateUsdToEur) : 0.92;
   const setExchangeRateUsdToEur = (value) => updateSettings({ exchangeRateUsdToEur: value == null || value === '' ? 0.92 : Number(value) });
 
+  const menuVisibility = useMemo(() => mergeMenuVisibility(settings.menuVisibility), [settings.menuVisibility]);
+
+  const setMenuItemVisible = (key, visible) => {
+    const next = { ...menuVisibility, [key]: Boolean(visible) };
+    return updateSettings({ menuVisibility: next });
+  };
+
+  const isMenuItemVisible = useCallback(
+    (key) => menuVisibility[key] !== false,
+    [menuVisibility]
+  );
+
   return (
-    <AppSettingsContext.Provider value={{ blurBalance, setBlurBalance, primaryAccountId, setPrimaryAccountId, appCurrency, setAppCurrency, exchangeRateUsdToEur, setExchangeRateUsdToEur, settings, updateSettings, loaded }}>
+    <AppSettingsContext.Provider
+      value={{
+        blurBalance,
+        setBlurBalance,
+        primaryAccountId,
+        setPrimaryAccountId,
+        appCurrency,
+        setAppCurrency,
+        exchangeRateUsdToEur,
+        setExchangeRateUsdToEur,
+        menuVisibility,
+        setMenuItemVisible,
+        isMenuItemVisible,
+        interestEligible,
+        settings,
+        updateSettings,
+        loaded,
+        settingsLoaded: loaded,
+      }}
+    >
       {children}
     </AppSettingsContext.Provider>
   );

@@ -1,6 +1,6 @@
 // (marcador cambios - borrar si quieres)
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { useMessage } from './context/MessageContext';
 import { api } from './api';
@@ -25,33 +25,36 @@ import {
 } from './components/Icons.jsx';
 import { useMovimientosSidebar } from './context/MovimientosSidebarContext'; 
 import { useLayoutHeaderContent } from './context/LayoutHeaderContext';
+import { useAppSettings } from './context/AppSettingsContext';
 import { registerBiometric, isWebAuthnAvailable, hasBiometricCredential, clearBiometricCredential } from './utils/webauthn';
+import { filterSidebarNav } from './config/sidebarNav';
+import MenuVisibilityGuard from './components/MenuVisibilityGuard';
 
 const inversionesChildren = [
-  { to: '/criptomonedas', label: 'Criptomonedas', Icon: IconCrypto },
-  { to: '/acciones', label: 'Acciones', Icon: IconStocks },
-  { to: '/intereses', label: 'Intereses', Icon: IconPercent },
+  { menuKey: 'criptomonedas', to: '/criptomonedas', label: 'Criptomonedas', Icon: IconCrypto },
+  { menuKey: 'acciones', to: '/acciones', label: 'Acciones', Icon: IconStocks },
+  { menuKey: 'intereses', to: '/intereses', label: 'Intereses', Icon: IconPercent },
 ];
 
 const recordatoriosChildren = [
-  { to: '/pastillas', label: 'Recordatorio', Icon: IconCalendar },
+  { menuKey: 'pastillas', to: '/pastillas', label: 'Recordatorio', Icon: IconCalendar },
 ];
 const misAppsChildren = [
   { type: 'group', label: 'Recordatorios', defaultTo: '/pastillas', children: recordatoriosChildren },
 ];
 
 const navBase = [
-  { to: '/', label: 'Inicio', Icon: IconHome },
-  { to: '/movimientos', label: 'Movimientos', Icon: IconFileText },
-  { to: '/tabla-rapida', label: 'Tabla rápida', Icon: IconChart },
-  { to: '/cuentas-rapida', label: 'Cuentas rápida', Icon: IconCreditCard },
-  { to: '/calendario', label: 'Calendario', Icon: IconCalendar },
-  { to: '/cuentas', label: 'Cuentas', Icon: IconCreditCard },
-  { to: '/transferencias', label: 'Transferencias', Icon: IconArrowLeftRight },
+  { menuKey: 'inicio', to: '/', label: 'Inicio', Icon: IconHome },
+  { menuKey: 'movimientos', to: '/movimientos', label: 'Movimientos', Icon: IconFileText },
+  { menuKey: 'tablaRapida', to: '/tabla-rapida', label: 'Tabla rápida', Icon: IconChart },
+  { menuKey: 'cuentasRapida', to: '/cuentas-rapida', label: 'Cuentas rápida', Icon: IconCreditCard },
+  { menuKey: 'calendario', to: '/calendario', label: 'Calendario', Icon: IconCalendar },
+  { menuKey: 'cuentas', to: '/cuentas', label: 'Cuentas', Icon: IconCreditCard },
+  { menuKey: 'transferencias', to: '/transferencias', label: 'Transferencias', Icon: IconArrowLeftRight },
   { type: 'group', label: 'Inversiones', Icon: IconStocks, defaultTo: '/criptomonedas', children: inversionesChildren },
   { type: 'group', label: 'Mis apps', Icon: IconMenu, defaultTo: '/pastillas', children: misAppsChildren },
-  { to: '/calculadora', label: 'Calculadora', Icon: IconCalculator },
-  { to: '/configuracion', label: 'Config', Icon: IconSettings },
+  { menuKey: 'calculadora', to: '/calculadora', label: 'Calculadora', Icon: IconCalculator },
+  { menuKey: 'configuracion', to: '/configuracion', label: 'Config', Icon: IconSettings },
 ];
 
 const MAIN_TABS = [
@@ -103,14 +106,13 @@ const GEAR_MODAL_TABS = [
 
 export default function Layout() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { user, logout, updateUser, pinEnabled, setPin, clearPin, unlock, lock } = useAuth();
   const { showMessage, confirm } = useMessage();
   const { actionsRef, sidebarState } = useMovimientosSidebar();
   const actions = actionsRef?.current;
   const headerTitle = useLayoutHeaderContent();
+  const { isMenuItemVisible, interestEligible } = useAppSettings();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [interestEligible, setInterestEligible] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileModalTab, setProfileModalTab] = useState('perfil');
   const [profileName, setProfileName] = useState('');
@@ -123,10 +125,6 @@ export default function Layout() {
   const [bioRegistering, setBioRegistering] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
-
-  useEffect(() => {
-    api.interestHistory.get().then((data) => setInterestEligible(data?.eligible ?? false)).catch(() => setInterestEligible(false));
-  }, []);
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -142,17 +140,11 @@ export default function Layout() {
     }
   }, [userMenuOpen]);
 
-  const inversionesChildrenFiltered = interestEligible
-    ? inversionesChildren
-    : inversionesChildren.filter((c) => c.to !== '/intereses');
-  const nav = navBase
-    .filter((item) => item.label !== 'Mis apps' || user?.is_admin)
-    .map((item) => {
-      if (item.type === 'group' && item.label === 'Inversiones') {
-        return { ...item, children: inversionesChildrenFiltered };
-      }
-      return item;
-    });
+  const nav = filterSidebarNav(navBase, {
+    isMenuItemVisible,
+    isAdmin: Boolean(user?.is_admin),
+    interestEligible,
+  });
 
   const onNavClick = () => setSidebarOpen(false);
 
@@ -410,7 +402,9 @@ export default function Layout() {
           {headerTitle ? <h1 className="layout-header-title">{headerTitle}</h1> : null}
         </header>
         <div className="layout-content">
-          <Outlet />
+          <MenuVisibilityGuard>
+            <Outlet />
+          </MenuVisibilityGuard>
         </div>
         <footer className="layout-footer">
           © <span className="layout-footer-year">{new Date().getFullYear()}</span> BlockSpend · Design by Jezer

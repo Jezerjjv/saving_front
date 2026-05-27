@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
 
 const styles = {
-  section: { marginBottom: '1.5rem' },
-  subtitle: { fontSize: '1.05rem', marginBottom: '0.5rem' },
   hint: { fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' },
   card: {
     maxWidth: 420,
@@ -16,6 +14,20 @@ const styles = {
   field: { marginBottom: '1rem' },
   label: { display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.35rem' },
   input: { width: '100%', padding: '0.5rem 0.75rem', fontSize: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg)', color: 'var(--text)' },
+  btnCalc: {
+    width: '100%',
+    padding: '0.65rem 1rem',
+    fontSize: '1rem',
+    fontWeight: 600,
+    border: 'none',
+    borderRadius: 'var(--radius)',
+    background: 'var(--accent)',
+    color: '#fff',
+    cursor: 'pointer',
+    marginTop: '0.25rem',
+  },
+  btnCalcDisabled: { opacity: 0.55, cursor: 'not-allowed' },
+  error: { fontSize: '0.85rem', color: 'var(--expense)', marginTop: '0.5rem', marginBottom: 0 },
   resultRow: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -32,6 +44,11 @@ const styles = {
 
 const RETENCION_POR_DEFECTO = 19;
 
+function parseNum(value) {
+  const n = Number(String(value).replace(',', '.').trim());
+  return Number.isFinite(n) ? n : NaN;
+}
+
 export default function Calculadora() {
   useLayoutHeader('Calculadora de intereses');
   const [importe, setImporte] = useState('');
@@ -39,10 +56,12 @@ export default function Calculadora() {
   const [moneda, setMoneda] = useState('EUR');
   const [incluirRetenciones, setIncluirRetenciones] = useState(false);
   const [porcentajeRetencion, setPorcentajeRetencion] = useState(String(RETENCION_POR_DEFECTO));
+  const [showResults, setShowResults] = useState(false);
+  const [error, setError] = useState('');
 
-  const amount = Number(importe.replace(',', '.')) || 0;
-  const rate = Number(interes.replace(',', '.')) || 0;
-  const retencionPct = Math.min(100, Math.max(0, Number(porcentajeRetencion.replace(',', '.')) || 0));
+  const amount = parseNum(importe);
+  const rate = parseNum(interes);
+  const retencionPct = Math.min(100, Math.max(0, parseNum(porcentajeRetencion) || 0));
   const factorNeto = incluirRetenciones ? (100 - retencionPct) / 100 : 1;
 
   const gananciaAnualBruta = amount * (rate / 100);
@@ -53,27 +72,50 @@ export default function Calculadora() {
   const gananciaMensual = gananciaMensualBruta * factorNeto;
   const gananciaDiaria = gananciaDiariaBruta * factorNeto;
 
-  const fmt = (n) => {
-    return new Intl.NumberFormat('es', {
+  const fmt = (n) =>
+    new Intl.NumberFormat('es', {
       style: 'currency',
       currency: moneda,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(n ?? 0);
+
+  const handleCalculate = (e) => {
+    e?.preventDefault?.();
+    setError('');
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setShowResults(false);
+      setError('Introduce un importe mayor que 0.');
+      return;
+    }
+    if (!Number.isFinite(rate) || rate < 0) {
+      setShowResults(false);
+      setError('Introduce un interés anual válido (0 o más).');
+      return;
+    }
+    if (incluirRetenciones && (!Number.isFinite(retencionPct) || retencionPct < 0 || retencionPct > 100)) {
+      setShowResults(false);
+      setError('El porcentaje de retención debe estar entre 0 y 100.');
+      return;
+    }
+    setShowResults(true);
   };
 
   return (
     <div className="page-calculadora">
       <p style={styles.hint}>
-        Introduce un importe y un interés anual (%). La ganancia se calcula en base simple: proporcional al día, mes y año. Opcionalmente puedes aplicar una retención.
+        Introduce un importe y un interés anual (%). Pulsa Calcular para ver la ganancia al día, mes y año. Opcionalmente puedes aplicar una retención.
       </p>
-      <div style={styles.card}>
+      <form style={styles.card} onSubmit={handleCalculate}>
         <div style={styles.field}>
           <label style={styles.label} htmlFor="calc-moneda">Moneda</label>
           <select
             id="calc-moneda"
             value={moneda}
-            onChange={(e) => setMoneda(e.target.value)}
+            onChange={(e) => {
+              setMoneda(e.target.value);
+              setShowResults(false);
+            }}
             style={styles.input}
             className="select-modern"
           >
@@ -89,9 +131,14 @@ export default function Calculadora() {
             inputMode="decimal"
             placeholder="Ej. 10000"
             value={importe}
-            onChange={(e) => setImporte(e.target.value)}
+            onChange={(e) => {
+              setImporte(e.target.value);
+              setShowResults(false);
+              setError('');
+            }}
             style={styles.input}
             className="input-modern"
+            required
           />
         </div>
         <div style={styles.field}>
@@ -102,9 +149,14 @@ export default function Calculadora() {
             inputMode="decimal"
             placeholder="Ej. 3,5"
             value={interes}
-            onChange={(e) => setInteres(e.target.value)}
+            onChange={(e) => {
+              setInteres(e.target.value);
+              setShowResults(false);
+              setError('');
+            }}
             style={styles.input}
             className="input-modern"
+            required
           />
         </div>
         <div style={styles.checkboxRow}>
@@ -112,7 +164,10 @@ export default function Calculadora() {
             id="calc-retenciones"
             type="checkbox"
             checked={incluirRetenciones}
-            onChange={(e) => setIncluirRetenciones(e.target.checked)}
+            onChange={(e) => {
+              setIncluirRetenciones(e.target.checked);
+              setShowResults(false);
+            }}
             style={styles.checkbox}
             aria-describedby="calc-retenciones-desc"
           />
@@ -129,7 +184,10 @@ export default function Calculadora() {
               inputMode="decimal"
               placeholder="19"
               value={porcentajeRetencion}
-              onChange={(e) => setPorcentajeRetencion(e.target.value)}
+              onChange={(e) => {
+                setPorcentajeRetencion(e.target.value);
+                setShowResults(false);
+              }}
               style={{ ...styles.input, maxWidth: 120 }}
               className="input-modern"
             />
@@ -138,7 +196,20 @@ export default function Calculadora() {
             </span>
           </div>
         )}
-        {(amount > 0 && rate >= 0) && (
+
+        <button
+          type="submit"
+          style={{
+            ...styles.btnCalc,
+            ...(!importe.trim() || !interes.trim() ? styles.btnCalcDisabled : {}),
+          }}
+          disabled={!importe.trim() || !interes.trim()}
+        >
+          Calcular
+        </button>
+        {error ? <p style={styles.error} role="alert">{error}</p> : null}
+
+        {showResults && (
           <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
             {incluirRetenciones && retencionPct > 0 && (
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
@@ -159,7 +230,7 @@ export default function Calculadora() {
             </div>
           </div>
         )}
-      </div>
+      </form>
     </div>
   );
 }

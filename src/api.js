@@ -114,6 +114,23 @@ export const api = {
     create: (body) => request('/quick-accounts', { method: 'POST', body: JSON.stringify(body) }),
     update: (id, body) => request(`/quick-accounts/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     delete: (id) => request(`/quick-accounts/${id}`, { method: 'DELETE' }),
+    history: (year, month, accountId) => {
+      const q = new URLSearchParams();
+      if (year != null) q.set('year', String(year));
+      if (month != null) q.set('month', String(month));
+      if (accountId != null) q.set('accountId', String(accountId));
+      return request('/quick-accounts/history' + (q.toString() ? '?' + q.toString() : ''));
+    },
+    accountHistory: (id, year, month) => {
+      const q = new URLSearchParams();
+      if (year != null) q.set('year', String(year));
+      if (month != null) q.set('month', String(month));
+      return request(`/quick-accounts/${id}/history` + (q.toString() ? '?' + q.toString() : ''));
+    },
+    movement: (id, body) =>
+      request(`/quick-accounts/${id}/movement`, { method: 'POST', body: JSON.stringify(body) }),
+    transfer: (body) =>
+      request('/quick-accounts/transfer', { method: 'POST', body: JSON.stringify(body) }),
   },
   transfers: {
     list: () => request('/transfers'),

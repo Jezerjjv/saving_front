@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { useMessage } from '../context/MessageContext';
 import { useAppSettings } from '../context/AppSettingsContext';
+import { useAuth } from '../context/AuthContext';
+import { MENU_ITEMS_CONFIG } from '../config/sidebarNav';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
 import Loader from '../components/Loader';
 import { IconEdit, IconTrash } from '../components/Icons.jsx';
@@ -17,7 +19,21 @@ const SETTINGS_TABS = [
 export default function Settings() {
   useLayoutHeader('Configuración');
   const { showMessage, confirm } = useMessage();
-  const { blurBalance, setBlurBalance, appCurrency, setAppCurrency, exchangeRateUsdToEur, setExchangeRateUsdToEur } = useAppSettings();
+  const { user } = useAuth();
+  const {
+    blurBalance,
+    setBlurBalance,
+    appCurrency,
+    setAppCurrency,
+    exchangeRateUsdToEur,
+    setExchangeRateUsdToEur,
+    menuVisibility,
+    setMenuItemVisible,
+    interestEligible,
+  } = useAppSettings();
+  const menuConfigItems = MENU_ITEMS_CONFIG.filter(
+    (item) => !item.adminOnly || user?.is_admin
+  ).filter((item) => item.key !== 'intereses' || interestEligible);
   const [settingsTab, setSettingsTab] = useState('config');
   const [icons, setIcons] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -300,6 +316,32 @@ export default function Settings() {
               <span>Difuminar saldo de las cuentas</span>
             </label>
             <p style={styles.hint}>Cuando está activo, los importes de las cuentas se muestran difuminados en Resumen y Cuentas.</p>
+          </section>
+          <section style={styles.section}>
+            <h2 style={styles.subtitle}>Menú lateral</h2>
+            <p style={styles.hint}>
+              Elige qué secciones aparecen en el menú. Los cambios se guardan en tu cuenta. Si ocultas una sección y entras por URL, se redirige a la primera visible.
+            </p>
+            <ul style={styles.menuList}>
+              {menuConfigItems.map((item) => (
+                <li key={item.key} style={styles.menuListItem}>
+                  <label style={styles.toggleRow}>
+                    <input
+                      type="checkbox"
+                      checked={menuVisibility[item.key] !== false}
+                      onChange={(e) => setMenuItemVisible(item.key, e.target.checked)}
+                      style={styles.checkbox}
+                    />
+                    <span>
+                      {item.label}
+                      {item.group ? (
+                        <span style={styles.menuGroupTag}> · {item.group}</span>
+                      ) : null}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
           </section>
           <p style={styles.hint}>PIN y biometría se configuran en el engranaje (cuenta) del menú lateral.</p>
         </>
@@ -627,6 +669,9 @@ const styles = {
   inputShort: { width: 80, padding: '0.4rem 0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '1rem' },
   toggleRow: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer', fontSize: '1rem' },
   checkbox: { width: 20, height: 20, accentColor: 'var(--accent)' },
+  menuList: { listStyle: 'none', margin: '0.5rem 0 0', padding: 0, maxWidth: 420 },
+  menuListItem: { marginBottom: '0.15rem' },
+  menuGroupTag: { fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 400 },
   form: { marginBottom: '1rem' },
   formRow: { marginBottom: '0.5rem' },
   formActions: { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' },
