@@ -2777,17 +2777,18 @@ input[type="date"].input-date-picker {
 }
 
 @media (max-width: 768px) {
-  .page-cuentas-rapida {
-    font-size: 0.8rem;
+  .page-cuentas-rapida,
+  .page-cuentas-rapida.cuentas-rapida--compact {
+    font-size: 0.68rem;
   }
 
   .page-cuentas-rapida .cuentas-rapida-top-title {
-    font-size: 0.95rem !important;
+    font-size: 0.88rem !important;
   }
 
   .page-cuentas-rapida .cuentas-rapida-top-actions button {
-    font-size: 0.72rem !important;
-    padding: 0.3rem 0.5rem !important;
+    font-size: 0.65rem !important;
+    padding: 0.28rem 0.45rem !important;
   }
 
   .page-cuentas-rapida .cuentas-rapida-config-above {
@@ -2860,20 +2861,47 @@ input[type="date"].input-date-picker {
   }
 
   .page-cuentas-rapida .cuentas-rapida-table-wrap table {
-    font-size: 0.72rem !important;
+    font-size: 0.6rem !important;
+    line-height: 1.2;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap th {
+    font-size: 0.58rem !important;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   .page-cuentas-rapida .cuentas-rapida-table-wrap th,
   .page-cuentas-rapida .cuentas-rapida-table-wrap td {
-    padding: 0.28rem 0.35rem !important;
+    padding: 0.2rem 0.25rem !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    vertical-align: top;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-col-acciones {
+    white-space: nowrap !important;
+    overflow: hidden !important;
   }
 
   .page-cuentas-rapida .cuentas-rapida-td-amount {
-    font-size: 0.68rem !important;
+    font-size: 0.56rem !important;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
   }
 
   .page-cuentas-rapida .cuentas-rapida-saldo-eur {
-    font-size: 0.62rem !important;
+    font-size: 0.52rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-cuenta-nombre {
+    font-size: 0.6rem;
+    line-height: 1.15;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-moneda-inline {
+    font-size: 0.52rem !important;
   }
 
   .page-cuentas-rapida .cuentas-rapida-empty {
@@ -2901,17 +2929,17 @@ input[type="date"].input-date-picker {
   }
 
   .page-cuentas-rapida .cuentas-rapida-table-wrap--accounts .cuentas-rapida-col-cuenta {
-    width: 34% !important;
+    width: 36% !important;
   }
 
   .page-cuentas-rapida .cuentas-rapida-table-wrap--accounts .cuentas-rapida-col-saldo {
-    width: 26% !important;
+    width: 28% !important;
   }
 
   .page-cuentas-rapida .cuentas-rapida-table-wrap--accounts .cuentas-rapida-col-acciones {
-    width: 40% !important;
-    padding-left: 0.15rem !important;
-    padding-right: 0.15rem !important;
+    width: 36% !important;
+    padding-left: 0.1rem !important;
+    padding-right: 0.1rem !important;
   }
 
   .page-cuentas-rapida .cuentas-rapida-cuenta-nombre {
@@ -2932,13 +2960,13 @@ input[type="date"].input-date-picker {
     min-width: 0 !important;
     min-height: 0 !important;
     width: 100% !important;
-    height: 1.55rem !important;
+    height: 1.4rem !important;
     padding: 0 !important;
     margin: 0 !important;
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    font-size: 0.68rem !important;
+    font-size: 0.6rem !important;
     line-height: 1;
     box-sizing: border-box;
   }
@@ -2949,23 +2977,27 @@ input[type="date"].input-date-picker {
   }
 
   .page-cuentas-rapida .cuentas-rapida-actions svg {
-    width: 13px !important;
-    height: 13px !important;
+    width: 12px !important;
+    height: 12px !important;
   }
 
   /* Histórico: columnas más compactas */
   .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-fecha {
-    width: 22% !important;
+    width: 20% !important;
+    font-size: 0.55rem !important;
   }
 
   .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-cuenta-h {
-    width: 24% !important;
+    width: 26% !important;
   }
 
-  .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-cambio,
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-cambio {
+    width: 20% !important;
+  }
+
   .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-saldo-h,
   .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-total-h {
-    width: 18% !important;
+    width: 17% !important;
   }
 
   .cuentas-rapida-history-col {

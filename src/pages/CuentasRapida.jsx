@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../api';
 import { useLayoutHeader } from '../context/LayoutHeaderContext';
 import { useAppSettings } from '../context/AppSettingsContext';
@@ -69,6 +69,27 @@ export default function CuentasRapida() {
   const [transferAmount, setTransferAmount] = useState('');
   const [transferNote, setTransferNote] = useState('');
   const [transferBusy, setTransferBusy] = useState(false);
+  const [compactLayout, setCompactLayout] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const onChange = (e) => setCompactLayout(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  const fmt = useCallback(
+    (n, currency = 'EUR') =>
+      new Intl.NumberFormat('es', {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: compactLayout ? 0 : 2,
+        maximumFractionDigits: compactLayout ? 0 : 2,
+      }).format(n ?? 0),
+    [compactLayout]
+  );
 
   const rate = Number(exchangeRateUsdToEur) || 0.92;
   const toEur = (amount, accountCurrency) => {
@@ -362,16 +383,25 @@ export default function CuentasRapida() {
   const formatHistoryDate = (iso) => {
     if (!iso) return '—';
     const d = new Date(iso);
+    if (compactLayout) {
+      return d.toLocaleString('es', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
     return d.toLocaleString('es', {
       day: '2-digit',
       month: '2-digit',
+      year: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
     });
   };
 
   return (
-    <div className="page-cuentas-rapida" style={styles.wrap}>
+    <div className={`page-cuentas-rapida${compactLayout ? ' cuentas-rapida--compact' : ''}`} style={styles.wrap}>
       <div style={styles.topRow}>
         <h1 style={styles.title} className="cuentas-rapida-top-title">Cuentas rápida</h1>
         <div className="cuentas-rapida-top-actions" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -455,11 +485,11 @@ export default function CuentasRapida() {
                         <td style={{ ...styles.td, ...styles.tdAmount, ...blur }} className={`cuentas-rapida-col-saldo ${blurBalance ? 'balance-blur cuentas-rapida-td-amount' : 'cuentas-rapida-td-amount'}`}>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.15rem' }}>
                             <span style={{ color: balance >= 0 ? 'var(--income)' : 'var(--expense)', fontWeight: 600 }}>
-                              {formatMoney(balance, currency)}
+                              {fmt(balance, currency)}
                             </span>
                             {isUsd && (
                               <span style={styles.saldoEurLine} className="cuentas-rapida-saldo-eur">
-                                ↓ {formatMoney(inEur, 'EUR')}
+                                ↓ {fmt(inEur, 'EUR')}
                               </span>
                             )}
                           </div>
@@ -484,7 +514,7 @@ export default function CuentasRapida() {
                     <td style={styles.tdTotalLabel} className="cuentas-rapida-col-cuenta cuentas-rapida-col-total-label">Total (EUR)</td>
                     <td style={styles.td} className="cuentas-rapida-col-moneda" aria-hidden="true" />
                     <td style={{ ...styles.td, ...styles.tdAmount, color: totalEur >= 0 ? 'var(--income)' : 'var(--expense)', ...(blurBalance ? styles.balanceBlur : {}) }} className={`cuentas-rapida-col-saldo ${blurBalance ? 'balance-blur' : ''}`}>
-                      {formatMoney(totalEur, 'EUR')}
+                      {fmt(totalEur, 'EUR')}
                     </td>
                     <td style={styles.td} className="cuentas-rapida-col-acciones" />
                   </tr>
@@ -552,7 +582,7 @@ export default function CuentasRapida() {
                             {isAccountLifecycleNote(row.note) ? lifecycleLabel(row.note) : '—'}
                           </td>
                           <td style={{ ...styles.td, ...styles.tdAmount, fontWeight: 600, ...blur }} className={blurBalance ? 'balance-blur' : ''}>
-                            {formatMoney(row.totalAfterEur, 'EUR')}
+                            {fmt(row.totalAfterEur, 'EUR')}
                           </td>
                         </tr>
                       );
@@ -571,13 +601,13 @@ export default function CuentasRapida() {
                         </td>
                         <td style={{ ...styles.td, ...styles.tdAmount, color: isDown ? 'var(--expense)' : 'var(--income)', ...blur }} className={blurBalance ? 'balance-blur' : ''}>
                           <span aria-hidden="true" style={{ marginRight: '0.25rem' }}>{isDown ? '↓' : '↑'}</span>
-                          {formatMoney(Math.abs(l.amount), l.currency)}
+                          {fmt(Math.abs(l.amount), l.currency)}
                         </td>
                         <td style={{ ...styles.td, ...styles.tdAmount, ...blur }} className={blurBalance ? 'balance-blur' : ''}>
-                          {l.balanceAfter != null ? formatMoney(l.balanceAfter, l.currency) : '—'}
+                          {l.balanceAfter != null ? fmt(l.balanceAfter, l.currency) : '—'}
                         </td>
                         <td style={{ ...styles.td, ...styles.tdAmount, fontWeight: 600, ...blur }} className={blurBalance ? 'balance-blur' : ''}>
-                          {row.showMovementMeta ? formatMoney(row.totalAfterEur, 'EUR') : ''}
+                          {row.showMovementMeta ? fmt(row.totalAfterEur, 'EUR') : ''}
                         </td>
                       </tr>
                     );
