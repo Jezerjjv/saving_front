@@ -2764,6 +2764,11 @@ input[type="date"].input-date-picker {
     padding: 0.35rem 0.4rem;
   }
 
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-history-amount {
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+  }
+
   .page-cuentas-rapida .cuentas-rapida-actions {
     flex-wrap: wrap;
     justify-content: flex-end;
@@ -2998,6 +3003,21 @@ input[type="date"].input-date-picker {
   .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-saldo-h,
   .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-col-total-h {
     width: 17% !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-table-wrap--history .cuentas-rapida-history-amount {
+    font-size: 0.48rem !important;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    padding-left: 0.12rem !important;
+    padding-right: 0.12rem !important;
+  }
+
+  .page-cuentas-rapida .cuentas-rapida-history-arrow {
+    margin-right: 0.08rem;
+    font-size: 0.45rem;
+    vertical-align: baseline;
   }
 
   .cuentas-rapida-history-col {

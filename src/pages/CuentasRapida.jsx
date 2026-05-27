@@ -581,7 +581,10 @@ export default function CuentasRapida() {
                           <td colSpan={3} style={styles.td}>
                             {isAccountLifecycleNote(row.note) ? lifecycleLabel(row.note) : '—'}
                           </td>
-                          <td style={{ ...styles.td, ...styles.tdAmount, fontWeight: 600, ...blur }} className={blurBalance ? 'balance-blur' : ''}>
+                          <td
+                            style={{ ...styles.td, ...styles.tdAmount, fontWeight: 600, ...blur }}
+                            className={`cuentas-rapida-col-total-h cuentas-rapida-history-amount ${blurBalance ? 'balance-blur' : ''}`}
+                          >
                             {fmt(row.totalAfterEur, 'EUR')}
                           </td>
                         </tr>
@@ -599,14 +602,23 @@ export default function CuentasRapida() {
                           )}
                           <span style={{ fontWeight: 500 }}>{l.accountName}</span>
                         </td>
-                        <td style={{ ...styles.td, ...styles.tdAmount, color: isDown ? 'var(--expense)' : 'var(--income)', ...blur }} className={blurBalance ? 'balance-blur' : ''}>
-                          <span aria-hidden="true" style={{ marginRight: '0.25rem' }}>{isDown ? '↓' : '↑'}</span>
+                        <td
+                          style={{ ...styles.td, ...styles.tdAmount, color: isDown ? 'var(--expense)' : 'var(--income)', ...blur }}
+                          className={`cuentas-rapida-col-cambio cuentas-rapida-history-amount ${blurBalance ? 'balance-blur' : ''}`}
+                        >
+                          <span aria-hidden="true" className="cuentas-rapida-history-arrow">{isDown ? '↓' : '↑'}</span>
                           {fmt(Math.abs(l.amount), l.currency)}
                         </td>
-                        <td style={{ ...styles.td, ...styles.tdAmount, ...blur }} className={blurBalance ? 'balance-blur' : ''}>
+                        <td
+                          style={{ ...styles.td, ...styles.tdAmount, ...blur }}
+                          className={`cuentas-rapida-col-saldo-h cuentas-rapida-history-amount ${blurBalance ? 'balance-blur' : ''}`}
+                        >
                           {l.balanceAfter != null ? fmt(l.balanceAfter, l.currency) : '—'}
                         </td>
-                        <td style={{ ...styles.td, ...styles.tdAmount, fontWeight: 600, ...blur }} className={blurBalance ? 'balance-blur' : ''}>
+                        <td
+                          style={{ ...styles.td, ...styles.tdAmount, fontWeight: 600, ...blur }}
+                          className={`cuentas-rapida-col-total-h cuentas-rapida-history-amount ${blurBalance ? 'balance-blur' : ''}`}
+                        >
                           {row.showMovementMeta ? fmt(row.totalAfterEur, 'EUR') : ''}
                         </td>
                       </tr>
